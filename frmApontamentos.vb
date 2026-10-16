@@ -160,11 +160,7 @@ Public Class frmApontamentos
             x += w + Esc(20)
         End If
         Using fTitulo = TemaMecano.FonteTitulo(13.0F)
-            TextRenderer.DrawText(g, "Apontamentos de horas", fTitulo, New Point(x, Esc(11)), Color.White)
-        End Using
-        Using fSub = TemaMecano.FonteCorpo(8.5F)
-            TextRenderer.DrawText(g, "Seus lançamentos por cliente e atividade  ·  metas do mês  ·  dias pendentes da trava de horas", fSub,
-                                  New Point(x + Esc(1), Esc(37)), TemaMecano.CinzaClaro)
+            TextRenderer.DrawText(g, "Apontamentos de horas", fTitulo, New Point(x, (pnlHeader.Height - fTitulo.Height) \ 2), Color.White)
         End Using
     End Sub
 
@@ -817,7 +813,6 @@ Friend Class PainelResumoHoras
         Using fChip = TemaMecano.FonteCorpo(8.25F, FontStyle.Bold)
             If r.DiasPendentes.Count = 0 Then
                 FormasMecano.DesenharChip(g, "NENHUM DIA PENDENTE", rPend.X + Esc(16), rPend.Y + Esc(40), Esc(22), fChip, _verdeFundo, _verde)
-                Pequeno(g, rPend, Esc(74), "Os menus não travam por dias em aberto.", TemaMecano.CinzaEscuro)
             Else
                 ' Chips em linhas; a última linha reserva espaço para o "+N" dos dias que não couberam,
                 ' para ele ficar ao lado dos chips e não em cima do aviso do rodapé.
@@ -850,7 +845,7 @@ Friend Class PainelResumoHoras
                 Dim restantes = r.DiasPendentes.Count - mostrados
                 If restantes > 0 Then FormasMecano.DesenharChip(g, "+" & restantes, cx, cy, Esc(22), fChip, Color.FromArgb(240, 242, 245), TemaMecano.CinzaEscuro)
                 Using fInfo = TemaMecano.FonteCorpo(8.5F)
-                    Dim aviso = r.DiasPendentes.Count & If(r.DiasPendentes.Count = 1, " dia trava o menu", " dias travam o menu") & "  ·  clique no dia"
+                    Dim aviso = r.DiasPendentes.Count & If(r.DiasPendentes.Count = 1, " dia trava o menu", " dias travam o menu")
                     TextRenderer.DrawText(g, aviso, fInfo, New Rectangle(rPend.X + Esc(16), rPend.Bottom - Esc(28), rPend.Width - Esc(32), Esc(18)),
                                           TemaMecano.VermelhoPrimario, TextFormatFlags.Left Or TextFormatFlags.VerticalCenter Or TextFormatFlags.EndEllipsis Or TextFormatFlags.NoPrefix)
                 End Using
@@ -868,7 +863,6 @@ Friend Class PainelResumoHoras
             Dim n = b.Dias.Count
             Pequeno(g, rBanco, Esc(74), If(n = 0, "nenhum dia acima de " & Apontamento.FormatarHoras(ResumoHoras.JORNADA),
                                             n & If(n = 1, " dia acima de ", " dias acima de ") & Apontamento.FormatarHoras(ResumoHoras.JORNADA)), TemaMecano.CinzaEscuro)
-            Pequeno(g, rBanco, rBanco.Height - Esc(28), "clique para ver o extrato", TemaMecano.VermelhoPrimario)
         End If
     End Sub
 

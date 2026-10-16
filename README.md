@@ -33,7 +33,7 @@ Estado em 16/10/2026: pronta para **pré-produção** (banco `Grupo_Mecano_Teste
 2. Informe a **data** (nunca futura) e o **tempo** em horas e minutos, ou use um atalho (15 min, 30 min, 1 h, 2 h, 4 h, 8 h).
 3. **Salvar**, ou **Salvar e novo** (Ctrl+Enter) para lançar o dia inteiro sem fechar a janela.
 
-O subtítulo da janela acompanha o dia: *"Hoje: você já tem 7h00 · faltam 1h00 para 8h00 · com este lançamento fica 9h00, 1h00 vai para o banco de horas"*.
+O subtítulo da janela acompanha o dia, só com os números: *"Hoje: 7h00 · faltam 1h00 · com este: 9h00 (1h00 no banco)"*.
 
 ### Várias empresas de uma vez
 

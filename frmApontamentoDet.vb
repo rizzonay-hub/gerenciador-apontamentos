@@ -192,25 +192,24 @@ Public Class frmApontamentoDet
     End Function
 
     ''' <summary>
-    ''' "Hoje: você já tem 7h00 · faltam 1h00 para 8h00 · com este lançamento fica 9h00, 1h00 vai para o banco de horas".
-    ''' Mostra o efeito antes de gravar; quando passa do teto, avisa já aqui.
+    ''' "Hoje: 7h00 · faltam 1h00 · com este: 9h00 (1h00 no banco)". Só os números da pessoa; quando passa do teto, avisa já aqui.
     ''' </summary>
     Private Function DescricaoDoDia() As String
         Dim dia = If(dtpData Is Nothing, _dataInicial, dtpData.Value.Date)
         Dim jornada = BancoHoras.JornadaDoDia(dia)
-        Dim s = If(dia = Date.Today, "Hoje", Apontamento.FormatarData(dia)) & ": você já tem " & Apontamento.FormatarHoras(_jaNoDia)
+        Dim s = If(dia = Date.Today, "Hoje", Apontamento.FormatarData(dia)) & ": " & Apontamento.FormatarHoras(_jaNoDia)
         If jornada > 0D AndAlso _jaNoDia < jornada Then
-            s &= "  ·  faltam " & Apontamento.FormatarHoras(jornada - _jaNoDia) & " para " & Apontamento.FormatarHoras(jornada)
+            s &= "  ·  faltam " & Apontamento.FormatarHoras(jornada - _jaNoDia)
         End If
         Dim novo = TotalASalvar()
         If novo > 0D Then
             Dim total = _jaNoDia + novo
-            s &= "  ·  com este lançamento fica " & Apontamento.FormatarHoras(total)
+            s &= "  ·  com este: " & Apontamento.FormatarHoras(total)
             If total > BancoHoras.LIMITE_DIA Then
-                s &= ", passa do limite de " & Apontamento.FormatarHoras(BancoHoras.LIMITE_DIA) & " por dia"
+                s &= "  (passa de " & Apontamento.FormatarHoras(BancoHoras.LIMITE_DIA) & ")"
             Else
                 Dim extra = BancoHoras.ExtraDoLancamento(dia, _jaNoDia, novo)
-                If extra > 0D Then s &= ", " & Apontamento.FormatarHoras(extra) & " vai para o banco de horas"
+                If extra > 0D Then s &= "  (" & Apontamento.FormatarHoras(extra) & " no banco)"
             End If
         End If
         Return s
@@ -289,14 +288,14 @@ Public Class frmApontamentoDet
         secOque = NovaSecao("O QUE FOI FEITO", SEC_X, 20, ALT_OQUE_BASE)
 
         rbCliente = New RadioButton With {.Text = "Cliente", .AutoSize = True, .Left = Esc(16), .Top = Esc(38), .Checked = True, .Font = TemaMecano.FonteCorpo(9.75F)}
-        rbInterno = New RadioButton With {.Text = "Atividade interna (férias, treinamento, sistemas…)", .AutoSize = True, .Left = Esc(120), .Top = Esc(38), .Font = TemaMecano.FonteCorpo(9.75F)}
+        rbInterno = New RadioButton With {.Text = "Atividade interna", .AutoSize = True, .Left = Esc(120), .Top = Esc(38), .Font = TemaMecano.FonteCorpo(9.75F)}
         AddHandler rbCliente.CheckedChanged, Sub() AplicarTipo()
         AddHandler rbInterno.CheckedChanged, Sub() AplicarTipo()
 
         txtCliente = New TextBox With {
             .Left = Esc(16), .Top = Esc(70), .Width = Esc(600), .Font = TemaMecano.FonteCorpo(10.0F),
             .BorderStyle = BorderStyle.FixedSingle, .ForeColor = TemaMecano.TextoCampo}
-        AddHandler txtCliente.HandleCreated, Sub() SendMessage(txtCliente.Handle, EM_SETCUEBANNER, New IntPtr(1), "Digite parte do nome ou o código")
+        AddHandler txtCliente.HandleCreated, Sub() SendMessage(txtCliente.Handle, EM_SETCUEBANNER, New IntPtr(1), "Nome ou código")
         AddHandler txtCliente.TextChanged, Sub() AoDigitarCliente()
         AddHandler txtCliente.Enter, Sub()
                                          txtCliente.SelectAll()
@@ -338,17 +337,17 @@ Public Class frmApontamentoDet
 
         lblClienteInfo = New Label With {
             .AutoSize = False, .Left = Esc(16), .Top = Esc(102), .Width = Esc(700), .Height = Esc(20),
-            .ForeColor = TemaMecano.CinzaEscuro, .Font = TemaMecano.FonteCorpo(8.75F), .Text = "Digite parte do nome ou o código para encontrar."}
+            .ForeColor = TemaMecano.CinzaEscuro, .Font = TemaMecano.FonteCorpo(8.75F), .Text = ""}
 
         cboAtividade = New ComboBox With {
             .Left = Esc(16), .Top = Esc(70), .Width = Esc(600), .DropDownStyle = ComboBoxStyle.DropDownList,
             .Font = TemaMecano.FonteCorpo(10.0F), .FlatStyle = FlatStyle.System, .Visible = False, .DropDownHeight = Esc(320)}
         lblAtividadeAviso = New Label With {
             .AutoSize = False, .Left = Esc(16), .Top = Esc(102), .Width = Esc(700), .Height = Esc(20), .Visible = False,
-            .ForeColor = TemaMecano.CinzaEscuro, .Font = TemaMecano.FonteCorpo(8.75F), .Text = "Lista do Outros.txt da rede, a mesma do Time antigo."}
+            .ForeColor = TemaMecano.CinzaEscuro, .Font = TemaMecano.FonteCorpo(8.75F), .Text = ""}
 
         chkVarias = New CheckBox With {
-            .Text = "Lançar para várias empresas (grava uma linha por empresa)", .AutoSize = True,
+            .Text = "Lançar para várias empresas", .AutoSize = True,
             .Left = Esc(16), .Top = Esc(130), .Font = TemaMecano.FonteCorpo(9.5F), .Visible = (_id = 0)}
         AddHandler chkVarias.CheckedChanged, Sub() AplicarVarias()
 
@@ -500,9 +499,9 @@ Public Class frmApontamentoDet
         End If
         Dim horas = Apontamento.DeMinutos(min)
         Dim plural = If(n = 1, " empresa", " empresas")
-        rbMesmoTempo.Text = "Cada empresa fica com " & Apontamento.FormatarHoras(horas) & "  (" & n & plural & " = " & Apontamento.FormatarHoras(horas * n) & " no total)"
+        rbMesmoTempo.Text = "Cada empresa fica com " & Apontamento.FormatarHoras(horas) & "  (total " & Apontamento.FormatarHoras(horas * n) & ")"
         Dim partes = Apontamento.Ratear(horas, n)
-        rbDividir.Text = "Dividir " & If(min >= 60, "as ", "os ") & Apontamento.FormatarHoras(horas) & " entre " & If(n = 1, "a ", "as ") & n & plural &
+        rbDividir.Text = "Dividir " & Apontamento.FormatarHoras(horas) & " entre " & n & plural &
                          "  (" & If(partes.Count = 0, "tempo pequeno demais para dividir", DescreverPartes(partes)) & ")"
     End Sub
 
@@ -655,8 +654,8 @@ Public Class frmApontamentoDet
         lstSugestoes.Bounds = New Rectangle(secOque.Left + txtCliente.Left, secOque.Top + txtCliente.Bottom + Esc(2), txtCliente.Width, linhas * lstSugestoes.ItemHeight + Esc(4))
         lstSugestoes.Visible = True
         lstSugestoes.BringToFront()
-        lblClienteInfo.Text = If(encontrados.Count > MAX_SUGESTOES, "Mais de " & MAX_SUGESTOES & " empresas: continue digitando.  ",
-                                 encontrados.Count & If(encontrados.Count = 1, " empresa.  ", " empresas.  ")) & "↓ ↑ escolhe  ·  Tab, Enter ou clique seleciona"
+        lblClienteInfo.Text = If(encontrados.Count > MAX_SUGESTOES, "Mais de " & MAX_SUGESTOES & " empresas",
+                                 encontrados.Count & If(encontrados.Count = 1, " empresa", " empresas"))
         lblClienteInfo.ForeColor = TemaMecano.CinzaEscuro
     End Sub
 
@@ -860,7 +859,7 @@ Public Class frmApontamentoDet
     Private Sub MostrarInfoCliente()
         Dim c = _clienteSelecionado
         If c Is Nothing Then
-            lblClienteInfo.Text = "Digite parte do nome ou o código para encontrar."
+            lblClienteInfo.Text = ""
             lblClienteInfo.ForeColor = TemaMecano.CinzaEscuro
             Return
         End If
@@ -890,18 +889,17 @@ Public Class frmApontamentoDet
     Private Sub AtualizarEquivale()
         Dim min = MinutosInformados()
         If min = 0 Then
-            lblEquivale.Text = "Informe as horas e os minutos, ou use um atalho."
+            lblEquivale.Text = ""
         ElseIf chkVarias.Checked AndAlso _selecionados.Count > 1 Then
             Dim horas = Apontamento.DeMinutos(min)
             Dim partes = PartesPorEmpresa(horas)
             If ModoDividir Then
-                lblEquivale.Text = "= " & Apontamento.FormatarHoras(horas) & " dividido entre " & _selecionados.Count & " empresas: " &
-                                   If(partes.Count = 0, "tempo pequeno demais para dividir", DescreverPartes(partes))
+                lblEquivale.Text = "= " & If(partes.Count = 0, "tempo pequeno demais para dividir", DescreverPartes(partes))
             Else
-                lblEquivale.Text = "= " & Apontamento.FormatarHoras(horas) & " para cada empresa  (" & _selecionados.Count & " empresas = " & Apontamento.FormatarHoras(partes.Sum()) & " no total)"
+                lblEquivale.Text = "= " & Apontamento.FormatarHoras(horas) & " para cada empresa  ·  total " & Apontamento.FormatarHoras(partes.Sum())
             End If
         Else
-            lblEquivale.Text = "= " & Apontamento.FormatarHoras(Apontamento.DeMinutos(min)) & "  (gravado como " & Apontamento.FormatarDecimal(Apontamento.DeMinutos(min)) & " h)"
+            lblEquivale.Text = "= " & Apontamento.FormatarHoras(Apontamento.DeMinutos(min))
         End If
         AtualizarContagemSel()
         If pnlTopo IsNot Nothing Then pnlTopo.Invalidate()   ' o subtítulo mostra o efeito do tempo digitado no dia

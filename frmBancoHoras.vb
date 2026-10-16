@@ -44,7 +44,7 @@ Public Class frmBancoHoras
     Private ReadOnly _verdeFundo As Color = Color.FromArgb(222, 244, 231)
 
     Private Const LARGURA As Integer = 780
-    Private Const ALT_TOPO As Integer = 154
+    Private Const ALT_TOPO As Integer = 132
     Private Const ALT_RODAPE As Integer = 64
 
     Private Function Esc(v As Integer) As Integer
@@ -122,11 +122,7 @@ Public Class frmBancoHoras
         End Using
 
         Using f = TemaMecano.FonteCorpo(8.75F)
-            Dim linha1 = "Conta desde " & _banco.Inicio.ToString("dd/MM/yyyy") & ". O que passa de " & Apontamento.FormatarHoras(ResumoHoras.JORNADA) &
-                         " num dia entra aqui; sábado e domingo entram inteiros."
-            Dim linha2 = "Limite de apontamento: " & Apontamento.FormatarHoras(BancoHoras.LIMITE_DIA) & " por dia."
-            TextRenderer.DrawText(g, linha1, f, New Rectangle(x, Esc(72), w, Esc(18)), TemaMecano.CinzaEscuro, flags)
-            TextRenderer.DrawText(g, linha2, f, New Rectangle(x, Esc(90), w, Esc(18)), TemaMecano.CinzaEscuro, flags)
+            TextRenderer.DrawText(g, "desde " & _banco.Inicio.ToString("dd/MM/yyyy"), f, New Rectangle(x, Esc(72), w, Esc(18)), TemaMecano.CinzaEscuro, flags)
         End Using
 
         ' um chip por mês com crédito
@@ -134,7 +130,7 @@ Public Class frmBancoHoras
         If meses.Count > 0 Then
             Using fChip = TemaMecano.FonteCorpo(8.25F, FontStyle.Bold)
                 Dim cx = x
-                Dim cy = Esc(118)
+                Dim cy = Esc(96)
                 For Each m In meses
                     Dim texto = Apontamento.NomeCompetencia(m.Competencia) & "  +" & Apontamento.FormatarHoras(m.Extra)
                     Dim largura = TextRenderer.MeasureText(g, texto, fChip).Width + Esc(11)

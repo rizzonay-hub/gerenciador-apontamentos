@@ -187,10 +187,7 @@ Public Class frmGerenciamentoTime
                                             x += w + Esc(20)
                                         End If
                                         Using f = TemaMecano.FonteTitulo(13.0F)
-                                            TextRenderer.DrawText(g, "Gerenciamento do Time", f, New Point(x, Esc(10)), Color.White, TextFormatFlags.NoPadding)
-                                        End Using
-                                        Using f = TemaMecano.FonteCorpo(9.0F)
-                                            TextRenderer.DrawText(g, "Consultas de gestão sobre os apontamentos de toda a equipe  ·  só leitura", f, New Point(x, Esc(36)), Color.FromArgb(170, 176, 180), TextFormatFlags.NoPadding)
+                                            TextRenderer.DrawText(g, "Gerenciamento do Time", f, New Point(x, (pnlHeader.Height - f.Height) \ 2), Color.White, TextFormatFlags.NoPadding)
                                         End Using
                                     End Sub
         AddHandler pnlHeader.Resize, Sub() pnlHeader.Invalidate()
@@ -347,8 +344,8 @@ Public Class frmGerenciamentoTime
 
         pnl.Controls.Add(Rotulo("Mostrar", Esc(24), y2))
         anGeral = NovaOpcao("Tudo", Esc(24), y2 + Esc(20), True)
-        anCom = NovaOpcao("Só clientes (com código de empresa)", Esc(90), y2 + Esc(20), False)
-        anSem = NovaOpcao("Só atividades internas (sem código)", Esc(360), y2 + Esc(20), False)
+        anCom = NovaOpcao("Só clientes", Esc(90), y2 + Esc(20), False)
+        anSem = NovaOpcao("Só atividades internas", Esc(200), y2 + Esc(20), False)
         pnl.Controls.AddRange(New Control() {anColab, anEmpresa, anGeral, anCom, anSem})
         Return pnl
     End Function
@@ -391,9 +388,7 @@ Public Class frmGerenciamentoTime
         pnl.Controls.Add(Rotulo("Colaborador", x, y1))
         fuColab = NovoCombo(x, y1 + Esc(20), Esc(280))
 
-        Dim lblAjuda = New Label With {.AutoSize = True, .Left = Esc(24), .Top = y2 + Esc(22), .ForeColor = TemaMecano.CinzaClaro, .Font = TemaMecano.FonteCorpo(9.0F),
-                                       .Text = "Horas diretas = em clientes (com código de empresa)  ·  indiretas = atividades internas.  Duplo clique numa pessoa abre a Sintética dela."}
-        pnl.Controls.AddRange(New Control() {fuColab, lblAjuda})
+        pnl.Controls.Add(fuColab)
         Return pnl
     End Function
 
@@ -415,8 +410,7 @@ Public Class frmGerenciamentoTime
             udEsperado.Text = "A data final é anterior à inicial."
             Return
         End If
-        udEsperado.Text = "Esperado no período: " & Apontamento.FormatarHoras(LinhaUsuarioData.HorasEsperadas(udDe.Value.Date, udAte.Value.Date)) &
-                          "  (8h00 por dia útil, 4h00 no sábado, nada no domingo).  Em vermelho quem ficou abaixo ou passou disso."
+        udEsperado.Text = "Esperado no período: " & Apontamento.FormatarHoras(LinhaUsuarioData.HorasEsperadas(udDe.Value.Date, udAte.Value.Date))
     End Sub
 
     ' =================================================================
@@ -470,7 +464,7 @@ Public Class frmGerenciamentoTime
         lblVazio = New Label With {
             .Dock = DockStyle.Fill, .TextAlign = ContentAlignment.MiddleCenter, .Visible = True,
             .ForeColor = TemaMecano.CinzaClaro, .Font = TemaMecano.FonteCorpo(10.0F), .BackColor = TemaMecano.Branco,
-            .Text = "Escolha o período e os filtros e clique em Consultar."}
+            .Text = "Clique em Consultar."}
     End Sub
 
     ''' <summary>Por usuário e data: quem está fora do esperado fica em vermelho, como na tela antiga.</summary>
@@ -722,7 +716,7 @@ Public Class frmGerenciamentoTime
     Private Sub Preencher()
         If Not _consultada(_abaAtiva) Then
             grade.DataSource = Nothing
-            lblVazio.Text = "Escolha o período e os filtros e clique em Consultar."
+            lblVazio.Text = "Clique em Consultar."
             lblVazio.Visible = True
             btnExportar.Enabled = False
             MostrarMensagem("")

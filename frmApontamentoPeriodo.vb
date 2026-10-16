@@ -117,13 +117,7 @@ Public Class frmApontamentoPeriodo
                                       End Using
                                       Dim flags = TextFormatFlags.Left Or TextFormatFlags.VerticalCenter Or TextFormatFlags.EndEllipsis Or TextFormatFlags.NoPrefix
                                       Using f = TemaMecano.FonteTitulo(15.0F)
-                                          TextRenderer.DrawText(g, "Anotações por período", f, New Rectangle(Esc(24), Esc(18), pnlTopo.Width - Esc(48), Esc(30)), TemaMecano.TextoCampo, flags)
-                                      End Using
-                                      Using f = TemaMecano.FonteCorpo(9.25F)
-                                          TextRenderer.DrawText(g, "Grava um dia de cada vez no nome da pessoa: " &
-                                                                Apontamento.FormatarHoras(ResumoHoras.JORNADA) & " por dia útil, " &
-                                                                Apontamento.FormatarHoras(BancoHoras.JORNADA_SABADO) & " no sábado, nada no domingo.", f,
-                                                                New Rectangle(Esc(24), Esc(50), pnlTopo.Width - Esc(48), Esc(22)), TemaMecano.CinzaEscuro, flags)
+                                          TextRenderer.DrawText(g, "Anotações por período", f, New Rectangle(Esc(24), 0, pnlTopo.Width - Esc(48), pnlTopo.Height - 1), TemaMecano.TextoCampo, flags)
                                       End Using
                                   End Sub
     End Sub
@@ -176,7 +170,7 @@ Public Class frmApontamentoPeriodo
         chkDesligados = New CheckBox With {.Text = "mostrar desligados", .AutoSize = True, .Left = Esc(430), .Top = Esc(63), .Font = TemaMecano.FonteCorpo(8.75F), .ForeColor = TemaMecano.CinzaEscuro}
         AddHandler chkDesligados.CheckedChanged, Sub() PreencherColaboradores()
 
-        Rotulo(secQuem, "Motivo (é o texto que fica no apontamento)", 16, 98)
+        Rotulo(secQuem, "Motivo", 16, 98)
         Dim x = 16
         For Each motivo In PeriodoAfastamento.Motivos
             Dim rb = New RadioButton With {.Text = motivo, .AutoSize = True, .Left = Esc(x), .Top = Esc(118), .Font = TemaMecano.FonteCorpo(9.75F), .Checked = (rbMotivos.Count = 0)}
@@ -319,11 +313,11 @@ Public Class frmApontamentoPeriodo
                                                                            porDia.TryGetValue(d, v)
                                                                            Return v
                                                                        End Function)
-        lblResumo.Text = PeriodoAfastamento.Descrever(_dias) & "  ·  domingos não entram"
+        lblResumo.Text = PeriodoAfastamento.Descrever(_dias)
 
         Dim pulados = _dias.Where(Function(d) d.Pular).ToList()
         If pulados.Count = 0 Then
-            lblPulados.Text = "Nenhum desses dias tem apontamento ainda."
+            lblPulados.Text = ""
         Else
             Dim datas = String.Join(", ", pulados.Take(8).Select(Function(d) d.Data.ToString("dd/MM")))
             If pulados.Count > 8 Then datas &= " …"
