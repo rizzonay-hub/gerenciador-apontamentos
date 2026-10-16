@@ -100,7 +100,7 @@ Public Module ModApontamento
                 If p.Length < 3 Then Continue For
                 Dim id As Integer
                 If Not Integer.TryParse(p(0), id) Then Continue For
-                lista.Add(New ColaboradorResumo With {.Id = id, .Nome = p(1).Trim(), .Depto = p(2).Trim(), .Desligado = (p.Length >= 5 AndAlso p(4).Trim() = "1")})
+                lista.Add(New ColaboradorResumo With {.Id = id, .Nome = p(1).Trim(), .Depto = p(2).Trim(), .Funcao = If(p.Length >= 4, p(3).Trim(), ""), .Desligado = (p.Length >= 5 AndAlso p(4).Trim() = "1")})
             Next
         End If
         If Not lista.Any(Function(c) c.Id = Usersys) Then lista.Insert(0, New ColaboradorResumo With {.Id = Usersys, .Nome = UsuarioLogadoNome(), .Depto = "FISCAL"})
@@ -133,6 +133,84 @@ Public Module ModApontamento
                                     .UsuarioId = a.UsuarioId, .Usuario = If(c Is Nothing, "usuário " & a.UsuarioId, c.Nome), .Depto = If(c Is Nothing, "", c.Depto)}
                             End Function).
             OrderByDescending(Function(l) l.Data).ThenBy(Function(l) l.Usuario).ThenBy(Function(l) l.Empresa).ToList()
+    End Function
+
+    ''' <summary>Mesma seleção das procedures Time_GetByEmpresaAcumulado*, sobre o txt: soma por empresa, colaborador e mês.</summary>
+    Public Function ConsultaSintetica(f As FiltroSintetica) As List(Of LinhaSintetica)
+        Carregar()
+        Dim pessoas = Colaboradores()
+        Dim clientes = Me_Clientes()
+        Dim usuarioId As Integer = -1
+        If Not f.TodosUsuarios Then
+            Dim c = pessoas.FirstOrDefault(Function(x) x.Nome = f.Usuario)
+            usuarioId = If(c Is Nothing, 0, c.Id)
+        End If
+        Dim itens = _cache.Where(Function(a) a.Data.Date >= f.De.Date AndAlso a.Data.Date <= f.Ate.Date AndAlso (usuarioId = -1 OrElse a.UsuarioId = usuarioId))
+        If Not f.TodosGrupos Then
+            ' grupo é atributo do cliente: com um grupo escolhido só entram linhas com código, do grupo (Time_GetByEmpresaAcumuladoGeral)
+            Dim doGrupo = New HashSet(Of String)(clientes.Where(Function(c) c.Grupo = f.Grupo).Select(Function(c) c.Tradutor.TrimStart("0"c)))
+            itens = itens.Where(Function(a) a.EhCliente AndAlso doGrupo.Contains(a.EmpresaId.TrimStart("0"c)))
+            If Not f.TodasEmpresas Then itens = itens.Where(Function(a) a.Empresa = f.Empresa)
+        Else
+            Select Case f.Modo
+                Case ModoAnalitica.ComCodigoEmpresa
+                    itens = itens.Where(Function(a) a.EhCliente AndAlso (f.TodasEmpresas OrElse a.EmpresaId.TrimStart("0"c) = f.EmpresaId.TrimStart("0"c)))
+                Case ModoAnalitica.SemCodigoEmpresa
+                    itens = itens.Where(Function(a) Not a.EhCliente AndAlso (f.TodasEmpresas OrElse a.Empresa = f.Empresa))
+                Case Else
+                    itens = itens.Where(Function(a) f.TodasEmpresas OrElse a.Empresa = f.Empresa)
+            End Select
+        End If
+        Return itens.GroupBy(Function(a) a.EmpresaId.TrimStart("0"c) & "|" & a.Empresa.ToUpperInvariant() & "|" & a.UsuarioId & "|" & a.Data.Year & "|" & a.Data.Month).
+            Select(Function(gr)
+                       Dim p = gr.First()
+                       Dim c = pessoas.FirstOrDefault(Function(x) x.Id = p.UsuarioId)
+                       Dim cli = If(p.EhCliente, clientes.FirstOrDefault(Function(x) x.Tradutor.TrimStart("0"c) = p.EmpresaId.TrimStart("0"c)), Nothing)
+                       Return New LinhaSintetica With {
+                           .Codigo = p.EmpresaId, .Cnpj = If(cli Is Nothing, "", cli.Cnpj), .Empresa = p.Empresa, .Grupo = If(cli Is Nothing, "", cli.Grupo),
+                           .UsuarioId = p.UsuarioId, .Usuario = If(c Is Nothing, "usuário " & p.UsuarioId, c.Nome),
+                           .Ano = p.Data.Year, .Mes = p.Data.Month, .Horas = gr.Sum(Function(a) a.Horas)}
+                   End Function).
+            OrderBy(Function(l) l.Ano).ThenBy(Function(l) l.Mes).ThenBy(Function(l) l.Empresa).ThenBy(Function(l) l.Usuario).ToList()
+    End Function
+
+    Private Function Me_Clientes() As List(Of ClienteResumo)
+        Return Clientes()
+    End Function
+
+    ''' <summary>Horas diretas (clientes) e indiretas (atividades internas) por pessoa, como Time_GetByDataTudoHorasCustoDireto/Indireto.</summary>
+    Public Function ConsultaPorFuncionario(de As Date, ate As Date) As List(Of LinhaFuncionario)
+        Carregar()
+        Dim pessoas = Colaboradores()
+        Return _cache.Where(Function(a) a.Data.Date >= de.Date AndAlso a.Data.Date <= ate.Date).
+            GroupBy(Function(a) a.UsuarioId).
+            Select(Function(gr)
+                       Dim c = pessoas.FirstOrDefault(Function(x) x.Id = gr.Key)
+                       Return New LinhaFuncionario With {
+                           .UsuarioId = gr.Key, .Usuario = If(c Is Nothing, "usuário " & gr.Key, c.Nome),
+                           .Depto = If(c Is Nothing, "", c.Depto), .Funcao = If(c Is Nothing, "", c.Funcao),
+                           .HorasDiretas = Math.Round(gr.Where(Function(a) a.EhCliente).Sum(Function(a) a.Horas), 2),
+                           .HorasIndiretas = Math.Round(gr.Where(Function(a) Not a.EhCliente).Sum(Function(a) a.Horas), 2)}
+                   End Function).
+            Where(Function(l) l.Total > 0D).OrderBy(Function(l) l.Usuario).ToList()
+    End Function
+
+    ''' <summary>Total de horas por pessoa no intervalo (Time_GetByEmpresaUsuario), com zero para quem não lançou.</summary>
+    Public Function ConsultaPorUsuarioData(de As Date, ate As Date) As List(Of LinhaUsuarioData)
+        Carregar()
+        Dim esperado = LinhaUsuarioData.HorasEsperadas(de, ate)
+        Dim pessoas = Colaboradores()
+        Dim somas = _cache.Where(Function(a) a.Data.Date >= de.Date AndAlso a.Data.Date <= ate.Date).
+            GroupBy(Function(a) a.UsuarioId).ToDictionary(Function(gr) gr.Key, Function(gr) gr.Sum(Function(a) a.Horas))
+        Dim lista As New List(Of LinhaUsuarioData)()
+        For Each c In pessoas
+            Dim h As Decimal = 0D
+            Dim tem = somas.TryGetValue(c.Id, h)
+            If tem OrElse Not c.Desligado Then
+                lista.Add(New LinhaUsuarioData With {.UsuarioId = c.Id, .Usuario = c.Nome, .Depto = c.Depto, .Horas = h, .Esperado = esperado})
+            End If
+        Next
+        Return lista.OrderBy(Function(l) l.Usuario).ToList()
     End Function
 
     Public Function ListarDesde(de As Date) As List(Of Apontamento)

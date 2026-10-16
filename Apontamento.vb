@@ -356,6 +356,8 @@ Public Class ColaboradorResumo
     Public Property Id As Integer
     Public Property Nome As String = ""
     Public Property Depto As String = ""
+    ''' <summary>TbSenha.FUNCAO (a "Consulta Geral" mostra ao lado do departamento).</summary>
+    Public Property Funcao As String = ""
     Public Property Desligado As Boolean
 
     Public ReadOnly Property Rotulo As String
@@ -504,3 +506,191 @@ Public Enum PeriodoLista
     Ultimos30Dias = 4
     Personalizado = 5
 End Enum
+
+' ============================================================================
+'  Gerenciamento do Time: as três consultas que faltavam (Sintética, Por
+'  funcionário e Por usuário e data), com os nomes das procedures das telas
+'  antigas no comentário de cada uma.
+' ============================================================================
+
+''' <summary>
+''' Filtro da Consulta Sintética (frmTimeConsultaAcumulado): os mesmos campos da
+''' tela antiga. Usuário, empresa e grupo viajam como NOME, que é o que as
+''' procedures Time_GetByEmpresaAcumulado* esperam.
+''' </summary>
+Public Class FiltroSintetica
+    Public Const TODOS_GRUPOS As String = "TODOS OS GRUPOS"
+
+    Public Property De As Date = New Date(Date.Today.Year, Date.Today.Month, 1)
+    Public Property Ate As Date = Date.Today
+    Public Property Usuario As String = FiltroAnalitica.TODOS_USUARIOS
+    Public Property Modo As ModoAnalitica = ModoAnalitica.Geral
+    ''' <summary>TbClientes.NOME, texto do Outros.txt ou TODAS_EMPRESAS.</summary>
+    Public Property Empresa As String = FiltroAnalitica.TODAS_EMPRESAS
+    ''' <summary>TRADUTOR da empresa escolhida (modo Com código); vazio para todas.</summary>
+    Public Property EmpresaId As String = ""
+    ''' <summary>TbClientes.DESCRIGRU ou TODOS_GRUPOS.</summary>
+    Public Property Grupo As String = TODOS_GRUPOS
+    ''' <summary>"Acumular por Empresa" da tela antiga (vem marcado): soma todos os colaboradores numa linha por empresa e mês.</summary>
+    Public Property AcumularPorEmpresa As Boolean = True
+
+    Public ReadOnly Property TodosUsuarios As Boolean
+        Get
+            Return Usuario = FiltroAnalitica.TODOS_USUARIOS
+        End Get
+    End Property
+
+    Public ReadOnly Property TodasEmpresas As Boolean
+        Get
+            Return Empresa = FiltroAnalitica.TODAS_EMPRESAS
+        End Get
+    End Property
+
+    Public ReadOnly Property TodosGrupos As Boolean
+        Get
+            Return Grupo = TODOS_GRUPOS OrElse Grupo.Trim() = ""
+        End Get
+    End Property
+End Class
+
+''' <summary>Uma linha da Consulta Sintética: horas de um colaborador numa empresa (ou atividade) num mês.</summary>
+Public Class LinhaSintetica
+    ''' <summary>TRADUTOR do cliente; vazio para atividade interna.</summary>
+    Public Property Codigo As String = ""
+    Public Property Cnpj As String = ""
+    Public Property Empresa As String = ""
+    Public Property Grupo As String = ""
+    Public Property UsuarioId As Integer
+    Public Property Usuario As String = ""
+    Public Property Ano As Integer
+    Public Property Mes As Integer
+    Public Property Horas As Decimal
+
+    Public ReadOnly Property EhCliente As Boolean
+        Get
+            Return If(Codigo, "").Trim() <> ""
+        End Get
+    End Property
+
+    ''' <summary>"out/2026"</summary>
+    Public ReadOnly Property MesTexto As String
+        Get
+            If Ano <= 0 OrElse Mes < 1 OrElse Mes > 12 Then Return ""
+            Return New Date(Ano, Mes, 1).ToString("MMM/yyyy", Apontamento.PtBr).Replace("./", "/")
+        End Get
+    End Property
+
+    Public ReadOnly Property HorasTexto As String
+        Get
+            Return Apontamento.FormatarHoras(Horas)
+        End Get
+    End Property
+
+    ''' <summary>Chave da empresa: o código do cliente ou, sem código, o próprio texto da atividade.</summary>
+    Public ReadOnly Property ChaveEmpresa As String
+        Get
+            Return If(EhCliente, Codigo.Trim().TrimStart("0"c), Empresa.Trim().ToUpperInvariant())
+        End Get
+    End Property
+
+    ''' <summary>
+    ''' "Acumular por Empresa" da tela antiga: uma linha por empresa e mês, com todos os
+    ''' colaboradores somados (USUARIO = "TODOS OS USUARIOS"). Diferença da tela antiga: lá as
+    ''' atividades sem código viravam uma linha só (chave vazia); aqui cada atividade mantém a sua.
+    ''' O total é o mesmo nos dois.
+    ''' </summary>
+    Public Shared Function AcumularPorEmpresa(linhas As IEnumerable(Of LinhaSintetica)) As List(Of LinhaSintetica)
+        Return linhas.GroupBy(Function(l) l.ChaveEmpresa & "|" & l.Ano & "|" & l.Mes).
+            Select(Function(gr)
+                       Dim p = gr.First()
+                       Return New LinhaSintetica With {
+                           .Codigo = p.Codigo, .Cnpj = p.Cnpj, .Empresa = p.Empresa, .Grupo = p.Grupo,
+                           .UsuarioId = 0, .Usuario = FiltroAnalitica.TODOS_USUARIOS, .Ano = p.Ano, .Mes = p.Mes,
+                           .Horas = gr.Sum(Function(l) l.Horas)}
+                   End Function).
+            OrderBy(Function(l) l.Ano).ThenBy(Function(l) l.Mes).ThenBy(Function(l) l.Empresa).ToList()
+    End Function
+End Class
+
+''' <summary>
+''' Uma linha da consulta Por funcionário (frmTimeFuncionario, "Consulta Geral"): horas
+''' diretas (em clientes, com código de empresa: Time_GetByDataTudoHorasCustoDireto) e
+''' indiretas (atividades internas, sem código: Time_GetByDataTudoHorasCustoIndireto).
+''' </summary>
+Public Class LinhaFuncionario
+    Public Property UsuarioId As Integer
+    Public Property Usuario As String = ""
+    Public Property Depto As String = ""
+    Public Property Funcao As String = ""
+    Public Property HorasDiretas As Decimal
+    Public Property HorasIndiretas As Decimal
+
+    Public ReadOnly Property Total As Decimal
+        Get
+            Return HorasDiretas + HorasIndiretas
+        End Get
+    End Property
+
+    ''' <summary>% das horas em clientes, inteiro (a tela antiga mostra com duas casas; aqui sem decimais).</summary>
+    Public ReadOnly Property PercDiretas As Integer
+        Get
+            If Total <= 0D Then Return 0
+            Return CInt(Math.Round(HorasDiretas / Total * 100D, MidpointRounding.AwayFromZero))
+        End Get
+    End Property
+
+    Public ReadOnly Property PercIndiretas As Integer
+        Get
+            If Total <= 0D Then Return 0
+            Return 100 - PercDiretas
+        End Get
+    End Property
+End Class
+
+''' <summary>
+''' Uma linha da consulta Por usuário e data (frmTimeConsultausuario): total de horas de cada
+''' pessoa no intervalo (Time_GetByEmpresaUsuario), comparado com o esperado do intervalo.
+''' Quem não lançou nada aparece com zero, como na tela antiga.
+''' </summary>
+Public Class LinhaUsuarioData
+    ''' <summary>Folga acima do esperado que a tela antiga tolera antes de pintar de vermelho (0,15 h).</summary>
+    Public Const TOLERANCIA As Decimal = 0.15D
+
+    Public Property UsuarioId As Integer
+    Public Property Usuario As String = ""
+    Public Property Depto As String = ""
+    Public Property Horas As Decimal
+    Public Property Esperado As Decimal
+
+    Public ReadOnly Property Diferenca As Decimal
+        Get
+            Return Horas - Esperado
+        End Get
+    End Property
+
+    ''' <summary>Mesma regra da tela antiga: vermelho quando ficou abaixo do esperado ou passou dele em mais de 0,15 h.</summary>
+    Public ReadOnly Property ForaDoEsperado As Boolean
+        Get
+            Return Horas < Esperado OrElse Horas > Esperado + TOLERANCIA
+        End Get
+    End Property
+
+    Public ReadOnly Property Situacao As String
+        Get
+            If Horas < Esperado Then Return "Abaixo"
+            If Horas > Esperado + TOLERANCIA Then Return "Acima"
+            Return "Em dia"
+        End Get
+    End Property
+
+    ''' <summary>Horas esperadas no intervalo, como a tela antiga conta: 8 h por dia útil, 4 h no sábado, nada no domingo.</summary>
+    Public Shared Function HorasEsperadas(de As Date, ate As Date) As Decimal
+        Dim total As Decimal = 0D
+        Dim d = de.Date
+        While d <= ate.Date
+            total += BancoHoras.JornadaDoDia(d)
+            d = d.AddDays(1)
+        End While
+        Return total
+    End Function
+End Class

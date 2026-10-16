@@ -64,9 +64,13 @@ A hierarquia do menu **Apontamentos › Time** de hoje é reproduzida dentro da 
 | Anotações | O botão **Novo apontamento**. |
 | Consulta | A própria lista, com período e busca. |
 | Anotações Período | Botão **Lançar período** ([07-anotacoes-periodo.png](capturas/07-anotacoes-periodo.png)): escolha a pessoa, o intervalo e o motivo (Férias / Afastamento ou Licença maternidade). A janela mostra antes quantos dias e horas vai gravar, com a regra de hoje: 8h00 por dia útil, "Sabado" com 4h00, nada no domingo. Dias em que a pessoa já tem apontamento são pulados (a tela antiga duplicava). |
-| Gerenciamento › Consulta Analítica | Botão **Gerenciamento** ([08-gerenciamento-analitica.png](capturas/08-gerenciamento-analitica.png)): uma tela com uma aba por consulta. A **Analítica** está pronta: período, colaborador, empresa e "Mostrar" (tudo, só clientes, só atividades internas), lista com total e Exportar. Usa as mesmas procedures da tela antiga, então os números batem. |
-| Gerenciamento › Sintética, Geral, Acumulada por Usuário e Data | Abas marcadas "em breve" na mesma tela; até lá, continuam no menu antigo. |
+| Gerenciamento › Consulta Analítica | Botão **Gerenciamento**: uma tela só, com as quatro consultas em abas. Aba **Analítica** ([08](capturas/08-gerenciamento-analitica.png)): período, colaborador, empresa e "Mostrar" (tudo, só clientes, só atividades internas), uma linha por apontamento, total na barra de baixo e Exportar. |
+| Gerenciamento › Sintética | Aba **Sintética** ([09](capturas/09-gerenciamento-sintetica.png)): horas somadas por empresa (ou atividade), colaborador e mês, com código, CNPJ e grupo. Filtros de período, colaborador, empresa ou atividade, grupo de empresas e "Mostrar". A opção **"Somar todos os colaboradores por empresa"** (o "Acumular por Empresa" de hoje, que vem marcado) deixa uma linha por empresa e mês. |
+| Gerenciamento › Geral | Aba **Por funcionário** ([10](capturas/10-gerenciamento-por-funcionario.png)): para cada pessoa, horas **diretas** (em clientes), **indiretas** (atividades internas), total e os percentuais. Duplo clique numa pessoa abre a Sintética dela no mesmo período, como a tela antiga abre o detalhe. |
+| Gerenciamento › Acumulada por Usuário e Data | Aba **Por usuário e data** ([11](capturas/11-gerenciamento-por-usuario-data.png)): total de horas de cada pessoa no intervalo, ao lado do esperado (8h00 por dia útil, 4h00 no sábado) e da diferença. Quem não lançou nada aparece com 0h00. Em vermelho quem ficou abaixo ou passou do esperado, como hoje. |
 | Gerenciamento › Controle do Ponto | Fora desta entrega, como combinado. |
+
+As quatro abas usam as mesmas procedures das telas antigas (`Time_GetByEmpresa*`, `Time_GetByEmpresaAcumulado*`, `Time_GetByDataTudoHorasCustoDireto/Indireto`, `Time_GetByEmpresaUsuario`) e a mesma escolha entre elas, então os totais batem. Toda aba tem Exportar (CSV com os totais e as horas também em decimal). As diferenças de apresentação em relação às telas antigas estão listadas no roteiro de teste do [IMPLANTACAO.md](IMPLANTACAO.md).
 
 ### O que continua igual
 
@@ -89,7 +93,7 @@ A hierarquia do menu **Apontamentos › Time** de hoje é reproduzida dentro da 
 | `frmApontamentoDet.vb` | **sim** → `Grupo_Mecano\Cadastro\` | Lançamento novo / alterar; várias empresas (mesmo tempo ou rateio); trava de 10 h. |
 | `frmBancoHoras.vb` | **sim** → `Grupo_Mecano\Cadastro\` | Extrato do banco de horas (só leitura). |
 | `frmApontamentoPeriodo.vb` | **sim** → `Grupo_Mecano\Cadastro\` | "Anotações por período": férias/afastamento no nome de outra pessoa (gestor e diretoria). |
-| `frmGerenciamentoTime.vb` | **sim** → `Grupo_Mecano\Cadastro\` | "Gerenciamento do Time": consultas de gestão em abas; a Analítica pronta, as outras três "em breve" (gestor e diretoria). |
+| `frmGerenciamentoTime.vb` | **sim** → `Grupo_Mecano\Cadastro\` | "Gerenciamento do Time": as quatro consultas de gestão em abas (Analítica, Sintética, Por funcionário, Por usuário e data), só leitura, com exportação (gestor e diretoria). |
 | `ModApontamentoDemo.vb` | não | Versão da camada de dados que lê e grava em txt, para a demonstração. Mesmos membros públicos do `ModApontamento`. |
 | `DemoMain.vb`, `build-demo.rsp`, `Compilar-Demo.bat` | não | Ponto de entrada e compilação da demo com o `vbc` do .NET 4.8, sem Visual Studio. |
 | `clientes.txt`, `colaboradores.txt`, `outros.txt`, `horasmes.txt` | não | Dados da demo. Empresas e colaboradores **fictícios**; atividades e metas mensais reais. |
@@ -118,6 +122,10 @@ Sem interface, contra a camada de dados da demo (resultados em [LEIA-ME.md](LEIA
 - Banco: saldo recalculado bate com os dias do extrato.
 - Período: duas semanas viram 12 dias (10 úteis de 8h00 e 2 sábados de 4h00, 88h00), domingos fora; a janela grava em nome da outra pessoa, pula os dias que ela já tinha e a lista da pessoa logada não mostra essas linhas.
 - Analítica: "só clientes" + "só atividades internas" = "tudo"; filtro por colaborador devolve só as linhas dela; filtro por empresa devolve só o código escolhido.
+- Sintética: o total de cada modo é igual ao da Analítica no mesmo modo; cada linha é a soma dos apontamentos daquela empresa, pessoa e mês; "somar por empresa" mantém o total e deixa uma linha por empresa e mês; filtros por colaborador, empresa, atividade e grupo conferidos contra a Analítica.
+- Por funcionário: diretas = horas em clientes da Analítica, indiretas = horas internas; departamento e função vêm do cadastro; % diretas + % indiretas = 100.
+- Por usuário e data: esperado de segunda a domingo = 44h00 e de segunda a sexta = 40h00; quem não lançou entra com 0h00; a regra do vermelho (abaixo, ou acima de 0,15 h) conferida nos limites.
+- A tela: as quatro abas consultam o mesmo período e a grade mostra a quantidade certa de linhas; o duplo clique em Por funcionário abre a Sintética da pessoa.
 
 O que **não** foi testado ainda: a compilação dentro do projeto `Grupo_Mecano` no Visual Studio e o uso com o banco SQL real. É o que a pré-produção vai cobrir.
 

@@ -36,8 +36,12 @@ Copiar para o projeto de **testes** primeiro (`Grupo_Mecano_Testes\Grupo_Mecano\
 - [ ] Em **Apontamentos › Time › Anotações**, trocar `New frmTimeDet(0)…Show()` por `frmApontamentos.Abrir()`.
 - [ ] Em **Apontamentos › Time › Consulta** (`frmTime`): apontar para `frmApontamentos.Abrir()` também, ou retirar do menu (decisão em aberto; em pré-produção, apontar para a tela nova).
 - [ ] Em **Apontamentos › Time › Anotações Período**, trocar `AbrirFormulario(Of frmTimePeriodo)()` por abrir `New frmApontamentoPeriodo()` com `ShowDialog()`.
-- [ ] Em **Apontamentos › Time › Gerenciamento › Consulta Analítica**, trocar `AbrirFormulario(Of frmTimeConsulta)()` por `frmGerenciamentoTime.Abrir()`. Sintética, Geral e Acumulada por Usuário e Data continuam abrindo as telas antigas até as abas ficarem prontas.
-- [ ] Deixar `frmTimeDet`, `frmTime`, `frmTimePeriodo` e `frmTimeConsulta` no projeto. São o caminho de volta.
+- [ ] Em **Apontamentos › Time › Gerenciamento**, os quatro itens passam a abrir a mesma tela, cada um na sua aba:
+  - Consulta Analítica: `AbrirFormulario(Of frmTimeConsulta)()` → `frmGerenciamentoTime.Abrir()`
+  - Sintética: `frmTimeConsultaAcumulado` → `frmGerenciamentoTime.Abrir(frmGerenciamentoTime.ABA_SINTETICA)`
+  - Geral: `frmTimeFuncionario` → `frmGerenciamentoTime.Abrir(frmGerenciamentoTime.ABA_FUNCIONARIO)`
+  - Acumulada por Usuário e Data: `frmTimeConsultausuario` → `frmGerenciamentoTime.Abrir(frmGerenciamentoTime.ABA_USUARIO_DATA)`
+- [ ] Deixar `frmTimeDet`, `frmTime`, `frmTimePeriodo`, `frmTimeConsulta`, `frmTimeConsultaAcumulado`, `frmTimeFuncionario` e `frmTimeConsultausuario` no projeto. São o caminho de volta e servem para a comparação do roteiro abaixo.
 - [ ] Na tela principal nova (quando subir), o item "Apontamentos" da barra lateral e o atalho "Horas" chamam `frmApontamentos` com `Embutir()`.
 
 ## Passo 3 — Compilar
@@ -81,8 +85,18 @@ Fazer com um **usuário comum** (não gestor) e depois com um **gestor**. Em cad
 - [ ] "Lançar período": escolher outra pessoa, duas semanas, Férias / Afastamento. A janela diz "10 dias úteis × 8h00 e 2 sábados × 4h00 = 88h00". Gravar e conferir na TbTime: 12 linhas no USUARIOID dela, EMPRESA = "Ferias / Afastamento" e "Sabado", EMPRESAID vazio, TEMPO 8,00 e 4,00.
 - [ ] Repetir o mesmo período: a janela avisa que os dias já têm apontamento e não grava nada.
 - [ ] "Gerenciamento", aba Analítica: mesmo período e filtros na tela antiga (Consulta Analítica) e na nova; a contagem de linhas e o total de horas têm de ser iguais nos três modos (Tudo / só clientes / só atividades internas), com "Todos" e com um colaborador escolhido, com "Todas as empresas" e com uma empresa.
-- [ ] Clicar nas abas "em breve": só uma mensagem na barra de status, nada abre.
-- [ ] Exportar da Analítica abre no Excel com acentos corretos e a linha de total.
+- [ ] Exportar de cada aba abre no Excel com acentos corretos e a linha de total.
+
+**Gerenciamento: as outras três abas, comparadas com as telas antigas**
+
+Em cada comparação, usar o mesmo período nas duas telas. A tela nova mostra horas como "8h30"; a antiga, como "8,50". Os totais são os mesmos.
+
+- [ ] **Sintética × Consulta dados Acumulados (frmTimeConsultaAcumulado)**, com "Acumular por Empresa" desmarcado nas duas: mesma quantidade de linhas e mesmo "TOTAL DE HORAS" nos três modos (Geral / Com Código / Sem Código), com "Todos" e com um usuário, com "Todas as empresas" e com uma empresa, e com um grupo de empresas escolhido.
+- [ ] Sintética com "Somar todos os colaboradores por empresa" (o "Acumular por Empresa", marcado): o total é o mesmo da tela antiga. **Diferença esperada**: a tela antiga junta todas as atividades sem código numa linha só (a chave dela é o código, vazio); a nova deixa uma linha por atividade. Nos clientes as linhas são iguais.
+- [ ] **Por funcionário × Time Funcionário (frmTimeFuncionario, "Consulta Geral")**: na antiga a busca é por competência (um mês); na nova, informar do dia 1 ao último dia do mesmo mês. Diretas, indiretas e totais por pessoa têm de bater, e os totais gerais de horas diretas e indiretas também. **Diferenças esperadas**: a tela antiga esconde quatro pessoas com nome fixo no código (a diretoria); a nova mostra todo mundo que tem horas. Os percentuais saem inteiros (90%) em vez de 90,00.
+- [ ] Por funcionário: duplo clique numa pessoa abre a Sintética dela no mesmo período, com as horas somadas por empresa e mês (a antiga abre o `frmTimeConsultaAcumuladoFuncionario`).
+- [ ] **Por usuário e data × Consulta dados no Time (frmTimeConsultausuario)**: mesma lista de pessoas e mesmas horas. **Atenção na comparação**: a tela antiga, antes de mostrar, "converte" valores com fração acima de 0,60 como se fossem minutos (8,75 vira 9,15), então para quem tem fração alta o número da grade antiga não é a soma real. Conferir contra a soma da pessoa na Analítica (ou na coluna "Horas (decimal)" do CSV). Diferenças esperadas: a antiga não lista seis nomes fixos no código (Marcelo, Junior, Teste, Cassia, Ingrid, Thiago); a nova lista todos os ativos da TbSenha menos o ADMINISTRADOR, e os desligados só se tiverem horas no período.
+- [ ] Por usuário e data: o "Esperado" é 8h00 por dia útil, 4h00 no sábado e nada no domingo (a mesma conta da tela antiga); fica em vermelho quem está abaixo ou mais de 0,15 h acima, como hoje.
 
 **Trava de horas do menu principal**
 - [ ] Com um dia pendente (menos de 8 h) nos últimos 20 dias úteis, o menu principal fica travado como hoje; o cartão MENOS DE 8 H mostra o dia.

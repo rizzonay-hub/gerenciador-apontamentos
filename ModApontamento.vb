@@ -231,12 +231,12 @@ Public Module ModApontamento
         Dim lista As New List(Of ColaboradorResumo)()
         Using cn As New SqlConnection(ConnString)
             cn.Open()
-            Using cmd As New SqlCommand("SELECT CODIGOID, RTRIM(ISNULL(USUARIO,'')) AS USUARIO, RTRIM(ISNULL(DEPTO,'')) AS DEPTO, ISNULL(DEMITIDO,0) AS DEMITIDO " &
+            Using cmd As New SqlCommand("SELECT CODIGOID, RTRIM(ISNULL(USUARIO,'')) AS USUARIO, RTRIM(ISNULL(DEPTO,'')) AS DEPTO, RTRIM(ISNULL(FUNCAO,'')) AS FUNCAO, ISNULL(DEMITIDO,0) AS DEMITIDO " &
                                         "FROM dbo.TbSenha WHERE RTRIM(ISNULL(USUARIO,'')) <> '' AND UPPER(RTRIM(USUARIO)) <> 'ADMINISTRADOR' ORDER BY USUARIO", cn) With {.CommandTimeout = 60}
                 Using rd = cmd.ExecuteReader()
                     While rd.Read()
                         lista.Add(New ColaboradorResumo With {
-                            .Id = Convert.ToInt32(rd("CODIGOID")), .Nome = Texto(rd("USUARIO")), .Depto = Texto(rd("DEPTO")),
+                            .Id = Convert.ToInt32(rd("CODIGOID")), .Nome = Texto(rd("USUARIO")), .Depto = Texto(rd("DEPTO")), .Funcao = Texto(rd("FUNCAO")),
                             .Desligado = Convert.ToBoolean(rd("DEMITIDO"))})
                     End While
                 End Using
@@ -326,6 +326,177 @@ Public Module ModApontamento
     Private Function Dec(rd As IDataRecord, colunas As HashSet(Of String), nome As String) As Decimal
         If Not colunas.Contains(nome) OrElse rd(nome) Is DBNull.Value Then Return 0D
         Return Convert.ToDecimal(rd(nome))
+    End Function
+
+    ''' <summary>
+    ''' Consulta Sintética: as mesmas procedures e a mesma escolha entre elas que o frmTimeConsultaAcumulado faz hoje:
+    '''   Geral → Time_GetByEmpresaAcumuladoGeralComSem (usuário, empresa, grupo);
+    '''   grupo escolhido (qualquer modo) → Time_GetByEmpresaAcumuladoGeral (usuário, empresa, grupo);
+    '''   Sem código → SCTE (todas) ou SC (uma); Com código → CCTE (todas) ou CC (uma).
+    ''' Código e CNPJ que a procedure não traz são completados pelo nome na TbClientes, como a tela antiga faz.
+    ''' O "Acumular por Empresa" é feito depois, em LinhaSintetica.AcumularPorEmpresa.
+    ''' </summary>
+    Public Function ConsultaSintetica(f As FiltroSintetica) As List(Of LinhaSintetica)
+        Dim proc As String
+        Dim parametros As New List(Of KeyValuePair(Of String, Object))()
+        Dim d1 = f.De.ToString("dd/MM/yyyy")
+        Dim d2 = f.Ate.ToString("dd/MM/yyyy")
+        If f.Modo = ModoAnalitica.Geral OrElse Not f.TodosGrupos Then
+            proc = If(f.Modo = ModoAnalitica.Geral, "dbo.Time_GetByEmpresaAcumuladoGeralComSem", "dbo.Time_GetByEmpresaAcumuladoGeral")
+            parametros.Add(New KeyValuePair(Of String, Object)("@data1", d1))
+            parametros.Add(New KeyValuePair(Of String, Object)("@data2", d2))
+            parametros.Add(New KeyValuePair(Of String, Object)("@usuario", f.Usuario))
+            parametros.Add(New KeyValuePair(Of String, Object)("@empresa", f.Empresa))
+            parametros.Add(New KeyValuePair(Of String, Object)("@descrigru", If(f.TodosGrupos, FiltroSintetica.TODOS_GRUPOS, f.Grupo)))
+        ElseIf f.Modo = ModoAnalitica.SemCodigoEmpresa Then
+            proc = If(f.TodasEmpresas, "dbo.Time_GetByEmpresaAcumuladoSCTE", "dbo.Time_GetByEmpresaAcumuladoSC")
+            parametros.Add(New KeyValuePair(Of String, Object)("@data1", d1))
+            parametros.Add(New KeyValuePair(Of String, Object)("@data2", d2))
+            parametros.Add(New KeyValuePair(Of String, Object)("@empresa", f.Empresa))
+            parametros.Add(New KeyValuePair(Of String, Object)("@usuario", f.Usuario))
+        Else
+            proc = If(f.TodasEmpresas, "dbo.Time_GetByEmpresaAcumuladoCCTE", "dbo.Time_GetByEmpresaAcumuladoCC")
+            parametros.Add(New KeyValuePair(Of String, Object)("@data1", d1))
+            parametros.Add(New KeyValuePair(Of String, Object)("@data2", d2))
+            parametros.Add(New KeyValuePair(Of String, Object)("@usuario", f.Usuario))
+            parametros.Add(New KeyValuePair(Of String, Object)("@empresaid", If(f.TodasEmpresas, "", f.EmpresaId)))
+        End If
+
+        Dim porNome = Clientes().GroupBy(Function(c) c.Nome.Trim().ToUpperInvariant()).ToDictionary(Function(g) g.Key, Function(g) g.First())
+        Dim lista As New List(Of LinhaSintetica)()
+        Using cn As New SqlConnection(ConnString)
+            cn.Open()
+            Using cmd As New SqlCommand(proc, cn) With {.CommandType = CommandType.StoredProcedure, .CommandTimeout = 120}
+                For Each p In parametros
+                    If p.Key = "@data1" OrElse p.Key = "@data2" Then
+                        cmd.Parameters.Add(p.Key, SqlDbType.Char, 10).Value = p.Value
+                    ElseIf p.Key = "@empresaid" Then
+                        cmd.Parameters.Add(p.Key, SqlDbType.Char, 7).Value = p.Value
+                    Else
+                        cmd.Parameters.Add(p.Key, SqlDbType.NVarChar, 100).Value = p.Value
+                    End If
+                Next
+                Using rd = cmd.ExecuteReader()
+                    Dim colunas = New HashSet(Of String)(StringComparer.OrdinalIgnoreCase)
+                    For i = 0 To rd.FieldCount - 1
+                        colunas.Add(rd.GetName(i))
+                    Next
+                    While rd.Read()
+                        Dim l As New LinhaSintetica With {
+                            .Codigo = TextoCol(rd, colunas, "TRADUTOR"),
+                            .Cnpj = TextoCol(rd, colunas, "cpf"),
+                            .Empresa = TextoCol(rd, colunas, "EMPRESA"),
+                            .Grupo = TextoCol(rd, colunas, "descrigru"),
+                            .UsuarioId = Inteiro(rd, colunas, "USUARIOID"),
+                            .Usuario = TextoCol(rd, colunas, "USUARIO"),
+                            .Ano = Inteiro(rd, colunas, "ANO"),
+                            .Mes = Inteiro(rd, colunas, "MES"),
+                            .Horas = Dec(rd, colunas, "TOT")}
+                        Dim c As ClienteResumo = Nothing
+                        If porNome.TryGetValue(l.Empresa.Trim().ToUpperInvariant(), c) Then
+                            If l.Codigo = "" Then l.Codigo = c.Tradutor
+                            If l.Cnpj = "" Then l.Cnpj = c.Cnpj
+                            If l.Grupo = "" Then l.Grupo = c.Grupo
+                        End If
+                        lista.Add(l)
+                    End While
+                End Using
+            End Using
+        End Using
+        Return lista.OrderBy(Function(l) l.Ano).ThenBy(Function(l) l.Mes).ThenBy(Function(l) l.Empresa).ThenBy(Function(l) l.Usuario).ToList()
+    End Function
+
+    ''' <summary>
+    ''' Consulta Por funcionário ("Consulta Geral", frmTimeFuncionario): horas diretas de
+    ''' Time_GetByDataTudoHorasCustoDireto e indiretas de Time_GetByDataTudoHorasCustoIndireto,
+    ''' somadas por USUARIOID, com departamento e função da TbSenha. Só quem tem horas no período.
+    ''' A tela antiga trabalha por competência (um mês); aqui o período é livre e, com o mês
+    ''' inteiro, os números são os mesmos.
+    ''' </summary>
+    Public Function ConsultaPorFuncionario(de As Date, ate As Date) As List(Of LinhaFuncionario)
+        Dim mapa As New Dictionary(Of Integer, LinhaFuncionario)()
+        LerHorasPorUsuario("dbo.Time_GetByDataTudoHorasCustoDireto", de, ate, mapa, True)
+        LerHorasPorUsuario("dbo.Time_GetByDataTudoHorasCustoIndireto", de, ate, mapa, False)
+        Dim pessoas = Colaboradores()
+        For Each l In mapa.Values
+            Dim c = pessoas.FirstOrDefault(Function(x) x.Id = l.UsuarioId)
+            If c IsNot Nothing Then
+                If l.Usuario = "" Then l.Usuario = c.Nome
+                l.Depto = c.Depto
+                l.Funcao = c.Funcao
+            End If
+        Next
+        Return mapa.Values.Where(Function(l) l.Total > 0D).OrderBy(Function(l) l.Usuario).ToList()
+    End Function
+
+    Private Sub LerHorasPorUsuario(proc As String, de As Date, ate As Date, mapa As Dictionary(Of Integer, LinhaFuncionario), diretas As Boolean)
+        Dim pessoas = Colaboradores()
+        Using cn As New SqlConnection(ConnString)
+            cn.Open()
+            Using cmd As New SqlCommand(proc, cn) With {.CommandType = CommandType.StoredProcedure, .CommandTimeout = 120}
+                cmd.Parameters.Add("@data1", SqlDbType.Char, 10).Value = de.ToString("dd/MM/yyyy")
+                cmd.Parameters.Add("@data2", SqlDbType.Char, 10).Value = ate.ToString("dd/MM/yyyy")
+                Using rd = cmd.ExecuteReader()
+                    Dim colunas = New HashSet(Of String)(StringComparer.OrdinalIgnoreCase)
+                    For i = 0 To rd.FieldCount - 1
+                        colunas.Add(rd.GetName(i))
+                    Next
+                    While rd.Read()
+                        Dim nome = TextoCol(rd, colunas, "usuarios")
+                        Dim id = Inteiro(rd, colunas, "usuarioid")
+                        If id = 0 Then
+                            Dim c = pessoas.FirstOrDefault(Function(x) String.Equals(x.Nome, nome, StringComparison.OrdinalIgnoreCase))
+                            If c IsNot Nothing Then id = c.Id
+                        End If
+                        Dim l As LinhaFuncionario = Nothing
+                        If Not mapa.TryGetValue(id, l) Then
+                            l = New LinhaFuncionario With {.UsuarioId = id, .Usuario = nome}
+                            mapa(id) = l
+                        End If
+                        Dim h = Math.Round(Dec(rd, colunas, "horas"), 2)
+                        If diretas Then l.HorasDiretas += h Else l.HorasIndiretas += h
+                    End While
+                End Using
+            End Using
+        End Using
+    End Sub
+
+    ''' <summary>
+    ''' Consulta Por usuário e data (frmTimeConsultausuario): Time_GetByEmpresaUsuario devolve o total
+    ''' de horas de cada pessoa no intervalo; quem não lançou nada entra com zero (colaboradores
+    ''' ativos da TbSenha), e cada linha é comparada com o esperado do intervalo.
+    ''' </summary>
+    Public Function ConsultaPorUsuarioData(de As Date, ate As Date) As List(Of LinhaUsuarioData)
+        Dim esperado = LinhaUsuarioData.HorasEsperadas(de, ate)
+        Dim pessoas = Colaboradores()
+        Dim lista As New List(Of LinhaUsuarioData)()
+        Using cn As New SqlConnection(ConnString)
+            cn.Open()
+            Using cmd As New SqlCommand("dbo.Time_GetByEmpresaUsuario", cn) With {.CommandType = CommandType.StoredProcedure, .CommandTimeout = 120}
+                cmd.Parameters.Add("@data1", SqlDbType.Char, 10).Value = de.ToString("dd/MM/yyyy")
+                cmd.Parameters.Add("@data2", SqlDbType.Char, 10).Value = ate.ToString("dd/MM/yyyy")
+                Using rd = cmd.ExecuteReader()
+                    Dim colunas = New HashSet(Of String)(StringComparer.OrdinalIgnoreCase)
+                    For i = 0 To rd.FieldCount - 1
+                        colunas.Add(rd.GetName(i))
+                    Next
+                    While rd.Read()
+                        Dim nome = TextoCol(rd, colunas, "USUARIOS")
+                        Dim c = pessoas.FirstOrDefault(Function(x) String.Equals(x.Nome, nome, StringComparison.OrdinalIgnoreCase))
+                        lista.Add(New LinhaUsuarioData With {
+                            .UsuarioId = If(c Is Nothing, 0, c.Id), .Usuario = nome, .Depto = If(c Is Nothing, "", c.Depto),
+                            .Horas = Dec(rd, colunas, "HORAS"), .Esperado = esperado})
+                    End While
+                End Using
+            End Using
+        End Using
+        For Each c In pessoas.Where(Function(x) Not x.Desligado)
+            Dim nome = c.Nome
+            If Not lista.Any(Function(l) String.Equals(l.Usuario, nome, StringComparison.OrdinalIgnoreCase)) Then
+                lista.Add(New LinhaUsuarioData With {.UsuarioId = c.Id, .Usuario = c.Nome, .Depto = c.Depto, .Horas = 0D, .Esperado = esperado})
+            End If
+        Next
+        Return lista.OrderBy(Function(l) l.Usuario).ToList()
     End Function
 
     ''' <summary>Atividades internas do Outros.txt; sem "administrativo" para quem não é gestor/diretoria.</summary>

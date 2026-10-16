@@ -17,15 +17,15 @@ Imports System.Windows.Forms
 '  frmGerenciamentoTime - "Gerenciamento" do menu Apontamentos › Time, numa tela
 '  só, com uma aba por consulta de gestão:
 '
-'    Analítica          (hoje frmTimeConsulta)           ← pronta
-'    Sintética          (hoje frmTimeConsultaAcumulado)  ← em breve
-'    Por funcionário    (hoje frmTimeFuncionario, "Consulta Geral") ← em breve
-'    Por usuário e data (hoje frmTimeConsultausuario)    ← em breve
+'    Analítica          (hoje frmTimeConsulta)              linha a linha
+'    Sintética          (hoje frmTimeConsultaAcumulado)     por empresa, colaborador e mês
+'    Por funcionário    (hoje frmTimeFuncionario, "Consulta Geral")  horas diretas e indiretas
+'    Por usuário e data (hoje frmTimeConsultausuario)       total de cada pessoa no intervalo
 '
-'  A aba Analítica usa exatamente as procedures e a mesma escolha entre elas que
-'  o frmTimeConsulta faz hoje (ModApontamento.ConsultaAnalitica), então os
-'  números batem com a tela antiga. Só leitura; exporta CSV.
-'  Só gestor e diretoria (ModApontamento.PodeGerenciar).
+'  Cada aba usa exatamente as procedures e a mesma escolha entre elas que a tela
+'  antiga correspondente (ModApontamento.ConsultaAnalitica, ConsultaSintetica,
+'  ConsultaPorFuncionario, ConsultaPorUsuarioData), então os números batem.
+'  Só leitura; cada aba exporta CSV. Só gestor e diretoria (ModApontamento.PodeGerenciar).
 '
 '  Destino no projeto: Grupo_Mecano\Cadastro\frmGerenciamentoTime.vb
 ' ============================================================================
@@ -34,8 +34,8 @@ Public Class frmGerenciamentoTime
 
     Private Shared _instancia As frmGerenciamentoTime = Nothing
 
-    ''' <summary>Abre a tela (ou traz para a frente a que já está aberta).</summary>
-    Public Shared Sub Abrir()
+    ''' <summary>Abre a tela (ou traz para a frente a que já está aberta), na aba pedida: os quatro itens do menu Gerenciamento chamam esta função.</summary>
+    Public Shared Sub Abrir(Optional aba As Integer = ABA_ANALITICA)
         If _instancia Is Nothing OrElse _instancia.IsDisposed Then
             _instancia = New frmGerenciamentoTime()
             _instancia.Show()
@@ -44,7 +44,13 @@ Public Class frmGerenciamentoTime
             _instancia.BringToFront()
             _instancia.Activate()
         End If
+        _instancia.MostrarAba(aba)
     End Sub
+
+    Public Const ABA_ANALITICA As Integer = 0
+    Public Const ABA_SINTETICA As Integer = 1
+    Public Const ABA_FUNCIONARIO As Integer = 2
+    Public Const ABA_USUARIO_DATA As Integer = 3
 
     Private _escala As Single = 1.0F
 
@@ -53,22 +59,22 @@ Public Class frmGerenciamentoTime
     End Function
 
     ' ---------- dados ----------
-    Private _linhas As New List(Of LinhaAnalitica)()
     Private _clientes As New List(Of ClienteResumo)()
     Private _colaboradores As New List(Of ColaboradorResumo)()
-    Private _filtroAtual As FiltroAnalitica = Nothing
+    Private _linhasAnalitica As New List(Of LinhaAnalitica)()
+    Private _linhasSintetica As New List(Of LinhaSintetica)()
+    Private _linhasFuncionario As New List(Of LinhaFuncionario)()
+    Private _linhasUsuarioData As New List(Of LinhaUsuarioData)()
+    Private _filtroAnalitica As FiltroAnalitica = Nothing
+    Private _filtroSintetica As FiltroSintetica = Nothing
+    Private _periodoFuncionario As Date() = Nothing
+    Private _periodoUsuarioData As Date() = Nothing
+    Private ReadOnly _consultada(3) As Boolean
 
-    ' ---------- controles ----------
+    ' ---------- controles comuns ----------
     Private pnlHeader As Panel
     Private pnlAbas As Panel
     Private pnlFiltros As Panel
-    Private dtpDe As DateTimePicker
-    Private dtpAte As DateTimePicker
-    Private cboColaborador As ComboBox
-    Private cboEmpresa As ComboBox
-    Private rbCom As RadioButton
-    Private rbSem As RadioButton
-    Private rbGeral As RadioButton
     Private btnConsultar As BotaoMecano
     Private btnExportar As BotaoMecano
     Private grade As DataGridView
@@ -77,12 +83,49 @@ Public Class frmGerenciamentoTime
     Private lblStatus As ToolStripStatusLabel
     Private lblDica As ToolStripStatusLabel
 
+    ' ---------- Analítica ----------
+    Private pnlAnalitica As Panel
+    Private anDe As DateTimePicker
+    Private anAte As DateTimePicker
+    Private anColab As ComboBox
+    Private anEmpresa As ComboBox
+    Private anGeral As RadioButton
+    Private anCom As RadioButton
+    Private anSem As RadioButton
+
+    ' ---------- Sintética ----------
+    Private pnlSintetica As Panel
+    Private siDe As DateTimePicker
+    Private siAte As DateTimePicker
+    Private siColab As ComboBox
+    Private siEmpresa As ComboBox
+    Private siGrupo As ComboBox
+    Private siGeral As RadioButton
+    Private siCom As RadioButton
+    Private siSem As RadioButton
+    Private siAcumular As CheckBox
+
+    ' ---------- Por funcionário ----------
+    Private pnlFuncionario As Panel
+    Private fuDe As DateTimePicker
+    Private fuAte As DateTimePicker
+    Private fuColab As ComboBox
+
+    ' ---------- Por usuário e data ----------
+    Private pnlUsuarioData As Panel
+    Private udDe As DateTimePicker
+    Private udAte As DateTimePicker
+    Private udEsperado As Label
+
     Private ReadOnly _abas As String() = {"Analítica", "Sintética", "Por funcionário", "Por usuário e data"}
     Private ReadOnly _abasRects As New List(Of Rectangle)()
-    Private _abaAtiva As Integer = 0
+    Private _abaAtiva As Integer = ABA_ANALITICA
 
     Private Const TODOS As String = "Todos os colaboradores"
     Private Const TODAS As String = "Todas as empresas"
+    Private Const TODAS_ATIVIDADES As String = "Todas as atividades"
+    Private Const TODAS_E_ATIVIDADES As String = "Todas as empresas e atividades"
+    Private Const TODOS_GRUPOS As String = "Todos os grupos"
 
     Public Sub New()
         Using g = Me.CreateGraphics()
@@ -154,7 +197,7 @@ Public Class frmGerenciamentoTime
     End Sub
 
     ' =================================================================
-    '  ABAS (uma por consulta; só a Analítica está pronta)
+    '  ABAS (uma por consulta)
     ' =================================================================
     Private Sub MontarAbas()
         pnlAbas = New Panel With {.Dock = DockStyle.Top, .Height = Esc(44), .BackColor = TemaMecano.Branco}
@@ -181,14 +224,12 @@ Public Class frmGerenciamentoTime
         Dim x = Esc(24)
         For i = 0 To _abas.Length - 1
             Dim ativa = (i = _abaAtiva)
-            Dim pronta = (i = 0)
-            Dim texto = _abas(i) & If(pronta, "", "  (em breve)")
             Using f = TemaMecano.FonteCorpo(9.75F, If(ativa, FontStyle.Bold, FontStyle.Regular))
-                Dim w = TextRenderer.MeasureText(g, texto, f).Width + Esc(24)
+                Dim w = TextRenderer.MeasureText(g, _abas(i), f).Width + Esc(24)
                 Dim r As New Rectangle(x, 0, w, pnlAbas.Height - 1)
                 _abasRects.Add(r)
-                Dim cor = If(ativa, TemaMecano.VermelhoPrimario, If(pronta, TemaMecano.CinzaEscuro, TemaMecano.CinzaClaro))
-                TextRenderer.DrawText(g, texto, f, r, cor, TextFormatFlags.HorizontalCenter Or TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPrefix)
+                Dim cor = If(ativa, TemaMecano.VermelhoPrimario, TemaMecano.CinzaEscuro)
+                TextRenderer.DrawText(g, _abas(i), f, r, cor, TextFormatFlags.HorizontalCenter Or TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPrefix)
                 If ativa Then
                     Using b As New SolidBrush(TemaMecano.VermelhoPrimario)
                         g.FillRectangle(b, New Rectangle(x + Esc(8), pnlAbas.Height - Esc(4), w - Esc(16), Esc(3)))
@@ -200,53 +241,54 @@ Public Class frmGerenciamentoTime
     End Sub
 
     Private Sub EscolherAba(i As Integer)
-        If i = 0 Then
-            _abaAtiva = 0
-            pnlAbas.Invalidate()
-            Return
-        End If
-        MostrarMensagem("""" & _abas(i) & """ ainda não está nesta tela: por enquanto use o menu Apontamentos › Time › Gerenciamento.")
+        If i < 0 OrElse i > 3 Then Return
+        _abaAtiva = i
+        pnlAnalitica.Visible = (i = ABA_ANALITICA)
+        pnlSintetica.Visible = (i = ABA_SINTETICA)
+        pnlFuncionario.Visible = (i = ABA_FUNCIONARIO)
+        pnlUsuarioData.Visible = (i = ABA_USUARIO_DATA)
+        pnlAbas.Invalidate()
+        Preencher()
     End Sub
 
+    ''' <summary>Troca de aba por código (captura da demonstração e testes).</summary>
+    Public Sub MostrarAba(i As Integer)
+        EscolherAba(i)
+    End Sub
+
+    Public ReadOnly Property AbaAtiva As Integer
+        Get
+            Return _abaAtiva
+        End Get
+    End Property
+
     ' =================================================================
-    '  FILTROS DA ANALÍTICA
+    '  FILTROS: um painel por aba dentro do mesmo espaço; botões em comum
     ' =================================================================
     Private Sub MontarFiltros()
         pnlFiltros = New Panel With {.Dock = DockStyle.Top, .Height = Esc(118), .BackColor = TemaMecano.FundoTela}
-        Dim y1 = Esc(14), y2 = Esc(66)
-        Dim x = Esc(24)
-
-        pnlFiltros.Controls.Add(Rotulo("Período", x, y1))
-        dtpDe = New DateTimePicker With {.Left = x, .Top = y1 + Esc(20), .Width = Esc(118), .Format = DateTimePickerFormat.Short, .Font = TemaMecano.FonteCorpo(9.75F),
-                                         .Value = New Date(Date.Today.Year, Date.Today.Month, 1)}
-        Dim lblA = New Label With {.Text = "a", .AutoSize = True, .Left = dtpDe.Right + Esc(6), .Top = y1 + Esc(24), .ForeColor = TemaMecano.CinzaEscuro}
-        dtpAte = New DateTimePicker With {.Left = lblA.Left + Esc(16), .Top = y1 + Esc(20), .Width = Esc(118), .Format = DateTimePickerFormat.Short, .Font = TemaMecano.FonteCorpo(9.75F), .Value = Date.Today}
-        x = dtpAte.Right + Esc(20)
-
-        pnlFiltros.Controls.Add(Rotulo("Colaborador", x, y1))
-        cboColaborador = New ComboBox With {.Left = x, .Top = y1 + Esc(20), .Width = Esc(280), .DropDownStyle = ComboBoxStyle.DropDownList, .Font = TemaMecano.FonteCorpo(9.75F), .FlatStyle = FlatStyle.System, .DropDownHeight = Esc(320)}
-        x = cboColaborador.Right + Esc(20)
-
-        pnlFiltros.Controls.Add(Rotulo("Empresa", x, y1))
-        cboEmpresa = New ComboBox With {.Left = x, .Top = y1 + Esc(20), .Width = Esc(380), .DropDownStyle = ComboBoxStyle.DropDownList, .Font = TemaMecano.FonteCorpo(9.75F), .FlatStyle = FlatStyle.System, .DropDownHeight = Esc(360)}
-
-        ' modo (os três botões de opção da tela de hoje), em palavras simples
-        pnlFiltros.Controls.Add(Rotulo("Mostrar", Esc(24), y2))
-        rbGeral = New RadioButton With {.Text = "Tudo", .AutoSize = True, .Left = Esc(24), .Top = y2 + Esc(20), .Checked = True, .Font = TemaMecano.FonteCorpo(9.5F)}
-        rbCom = New RadioButton With {.Text = "Só clientes (com código de empresa)", .AutoSize = True, .Left = Esc(90), .Top = y2 + Esc(20), .Font = TemaMecano.FonteCorpo(9.5F)}
-        rbSem = New RadioButton With {.Text = "Só atividades internas (sem código)", .AutoSize = True, .Left = Esc(360), .Top = y2 + Esc(20), .Font = TemaMecano.FonteCorpo(9.5F)}
 
         btnConsultar = BotaoMecano.Primario("Consultar", Esc(130), Esc(36))
         btnConsultar.Anchor = AnchorStyles.Top Or AnchorStyles.Right
-        btnConsultar.Top = y2 + Esc(10)
+        btnConsultar.Top = Esc(76)
         AddHandler btnConsultar.Click, Sub() Consultar()
         btnExportar = BotaoMecano.Secundario("Exportar", Esc(110), Esc(36))
         btnExportar.Anchor = AnchorStyles.Top Or AnchorStyles.Right
-        btnExportar.Top = y2 + Esc(10)
+        btnExportar.Top = Esc(76)
         btnExportar.Enabled = False
         AddHandler btnExportar.Click, Sub() Exportar()
 
-        pnlFiltros.Controls.AddRange(New Control() {dtpDe, lblA, dtpAte, cboColaborador, cboEmpresa, rbGeral, rbCom, rbSem, btnConsultar, btnExportar})
+        pnlAnalitica = MontarFiltrosAnalitica()
+        pnlSintetica = MontarFiltrosSintetica()
+        pnlFuncionario = MontarFiltrosFuncionario()
+        pnlUsuarioData = MontarFiltrosUsuarioData()
+        pnlSintetica.Visible = False
+        pnlFuncionario.Visible = False
+        pnlUsuarioData.Visible = False
+
+        pnlFiltros.Controls.AddRange(New Control() {pnlAnalitica, pnlSintetica, pnlFuncionario, pnlUsuarioData, btnConsultar, btnExportar})
+        btnConsultar.BringToFront()
+        btnExportar.BringToFront()
         AddHandler pnlFiltros.Resize, Sub() PosicionarBotoes()
         AddHandler pnlFiltros.Paint, Sub(s, e)
                                          Using p As New Pen(TemaMecano.BordaCampo)
@@ -262,9 +304,120 @@ Public Class frmGerenciamentoTime
         btnExportar.Left = btnConsultar.Left - Esc(8) - btnExportar.Width
     End Sub
 
+    Private Function NovoPainelFiltro() As Panel
+        Return New Panel With {.Dock = DockStyle.Fill, .BackColor = TemaMecano.FundoTela}
+    End Function
+
     Private Function Rotulo(texto As String, x As Integer, y As Integer) As Label
         Return New Label With {.Text = texto, .AutoSize = True, .Left = x, .Top = y, .ForeColor = TemaMecano.CinzaEscuro, .Font = TemaMecano.FonteCorpo(8.75F)}
     End Function
+
+    Private Function NovoCombo(x As Integer, y As Integer, largura As Integer) As ComboBox
+        Return New ComboBox With {.Left = x, .Top = y, .Width = largura, .DropDownStyle = ComboBoxStyle.DropDownList,
+                                  .Font = TemaMecano.FonteCorpo(9.75F), .FlatStyle = FlatStyle.System, .DropDownHeight = Esc(340)}
+    End Function
+
+    Private Function NovaOpcao(texto As String, x As Integer, y As Integer, marcada As Boolean) As RadioButton
+        Return New RadioButton With {.Text = texto, .AutoSize = True, .Left = x, .Top = y, .Checked = marcada, .Font = TemaMecano.FonteCorpo(9.5F)}
+    End Function
+
+    ''' <summary>Período "de … a …" num painel; devolve o x livre à direita.</summary>
+    Private Function MontarPeriodo(pnl As Panel, x As Integer, y As Integer, ByRef de As DateTimePicker, ByRef ate As DateTimePicker) As Integer
+        pnl.Controls.Add(Rotulo("Período", x, y))
+        de = New DateTimePicker With {.Left = x, .Top = y + Esc(20), .Width = Esc(118), .Format = DateTimePickerFormat.Short, .Font = TemaMecano.FonteCorpo(9.75F),
+                                      .Value = New Date(Date.Today.Year, Date.Today.Month, 1)}
+        Dim lblA = New Label With {.Text = "a", .AutoSize = True, .Left = de.Right + Esc(6), .Top = y + Esc(24), .ForeColor = TemaMecano.CinzaEscuro}
+        ate = New DateTimePicker With {.Left = lblA.Left + Esc(16), .Top = y + Esc(20), .Width = Esc(118), .Format = DateTimePickerFormat.Short, .Font = TemaMecano.FonteCorpo(9.75F), .Value = Date.Today}
+        pnl.Controls.AddRange(New Control() {de, lblA, ate})
+        Return ate.Right + Esc(20)
+    End Function
+
+    ' ---------- Analítica (a tela de hoje: frmTimeConsulta) ----------
+    Private Function MontarFiltrosAnalitica() As Panel
+        Dim pnl = NovoPainelFiltro()
+        Dim y1 = Esc(14), y2 = Esc(66)
+        Dim x = MontarPeriodo(pnl, Esc(24), y1, anDe, anAte)
+
+        pnl.Controls.Add(Rotulo("Colaborador", x, y1))
+        anColab = NovoCombo(x, y1 + Esc(20), Esc(280))
+        x = anColab.Right + Esc(20)
+
+        pnl.Controls.Add(Rotulo("Empresa", x, y1))
+        anEmpresa = NovoCombo(x, y1 + Esc(20), Esc(380))
+
+        pnl.Controls.Add(Rotulo("Mostrar", Esc(24), y2))
+        anGeral = NovaOpcao("Tudo", Esc(24), y2 + Esc(20), True)
+        anCom = NovaOpcao("Só clientes (com código de empresa)", Esc(90), y2 + Esc(20), False)
+        anSem = NovaOpcao("Só atividades internas (sem código)", Esc(360), y2 + Esc(20), False)
+        pnl.Controls.AddRange(New Control() {anColab, anEmpresa, anGeral, anCom, anSem})
+        Return pnl
+    End Function
+
+    ' ---------- Sintética (frmTimeConsultaAcumulado) ----------
+    Private Function MontarFiltrosSintetica() As Panel
+        Dim pnl = NovoPainelFiltro()
+        Dim y1 = Esc(14), y2 = Esc(66)
+        Dim x = MontarPeriodo(pnl, Esc(24), y1, siDe, siAte)
+
+        pnl.Controls.Add(Rotulo("Colaborador", x, y1))
+        siColab = NovoCombo(x, y1 + Esc(20), Esc(250))
+        x = siColab.Right + Esc(20)
+
+        pnl.Controls.Add(Rotulo("Empresa ou atividade", x, y1))
+        siEmpresa = NovoCombo(x, y1 + Esc(20), Esc(330))
+        x = siEmpresa.Right + Esc(20)
+
+        pnl.Controls.Add(Rotulo("Grupo de empresas", x, y1))
+        siGrupo = NovoCombo(x, y1 + Esc(20), Esc(200))
+
+        pnl.Controls.Add(Rotulo("Mostrar", Esc(24), y2))
+        siGeral = NovaOpcao("Tudo", Esc(24), y2 + Esc(20), True)
+        siCom = NovaOpcao("Só clientes", Esc(90), y2 + Esc(20), False)
+        siSem = NovaOpcao("Só atividades internas", Esc(200), y2 + Esc(20), False)
+        siAcumular = New CheckBox With {.Text = "Somar todos os colaboradores por empresa", .AutoSize = True, .Left = Esc(400), .Top = y2 + Esc(20), .Checked = True, .Font = TemaMecano.FonteCorpo(9.5F)}
+        AddHandler siGeral.CheckedChanged, Sub() If siGeral.Checked Then PreencherEmpresasSintetica()
+        AddHandler siCom.CheckedChanged, Sub() If siCom.Checked Then PreencherEmpresasSintetica()
+        AddHandler siSem.CheckedChanged, Sub() If siSem.Checked Then PreencherEmpresasSintetica()
+        pnl.Controls.AddRange(New Control() {siColab, siEmpresa, siGrupo, siGeral, siCom, siSem, siAcumular})
+        Return pnl
+    End Function
+
+    ' ---------- Por funcionário (frmTimeFuncionario, "Consulta Geral") ----------
+    Private Function MontarFiltrosFuncionario() As Panel
+        Dim pnl = NovoPainelFiltro()
+        Dim y1 = Esc(14), y2 = Esc(66)
+        Dim x = MontarPeriodo(pnl, Esc(24), y1, fuDe, fuAte)
+
+        pnl.Controls.Add(Rotulo("Colaborador", x, y1))
+        fuColab = NovoCombo(x, y1 + Esc(20), Esc(280))
+
+        Dim lblAjuda = New Label With {.AutoSize = True, .Left = Esc(24), .Top = y2 + Esc(22), .ForeColor = TemaMecano.CinzaClaro, .Font = TemaMecano.FonteCorpo(9.0F),
+                                       .Text = "Horas diretas = em clientes (com código de empresa)  ·  indiretas = atividades internas.  Duplo clique numa pessoa abre a Sintética dela."}
+        pnl.Controls.AddRange(New Control() {fuColab, lblAjuda})
+        Return pnl
+    End Function
+
+    ' ---------- Por usuário e data (frmTimeConsultausuario) ----------
+    Private Function MontarFiltrosUsuarioData() As Panel
+        Dim pnl = NovoPainelFiltro()
+        Dim y1 = Esc(14), y2 = Esc(66)
+        MontarPeriodo(pnl, Esc(24), y1, udDe, udAte)
+        udEsperado = New Label With {.AutoSize = True, .Left = Esc(24), .Top = y2 + Esc(22), .ForeColor = TemaMecano.CinzaClaro, .Font = TemaMecano.FonteCorpo(9.0F)}
+        AddHandler udDe.ValueChanged, Sub() AtualizarEsperado()
+        AddHandler udAte.ValueChanged, Sub() AtualizarEsperado()
+        pnl.Controls.Add(udEsperado)
+        AtualizarEsperado()
+        Return pnl
+    End Function
+
+    Private Sub AtualizarEsperado()
+        If udAte.Value.Date < udDe.Value.Date Then
+            udEsperado.Text = "A data final é anterior à inicial."
+            Return
+        End If
+        udEsperado.Text = "Esperado no período: " & Apontamento.FormatarHoras(LinhaUsuarioData.HorasEsperadas(udDe.Value.Date, udAte.Value.Date)) &
+                          "  (8h00 por dia útil, 4h00 no sábado, nada no domingo).  Em vermelho quem ficou abaixo ou passou disso."
+    End Sub
 
     ' =================================================================
     '  GRADE
@@ -305,11 +458,62 @@ Public Class frmGerenciamentoTime
             .StandardTab = True
         End With
         AddHandler grade.DataBindingComplete, Sub() grade.ClearSelection()
+        AddHandler grade.CellFormatting, AddressOf FormatarCelula
+        AddHandler grade.CellDoubleClick, Sub(s, e) If e.RowIndex >= 0 Then AbrirDetalheDaLinha(e.RowIndex)
+        AddHandler grade.KeyDown, Sub(s, e)
+                                      If e.KeyCode = Keys.Enter AndAlso grade.CurrentRow IsNot Nothing Then
+                                          e.Handled = True
+                                          AbrirDetalheDaLinha(grade.CurrentRow.Index)
+                                      End If
+                                  End Sub
 
         lblVazio = New Label With {
             .Dock = DockStyle.Fill, .TextAlign = ContentAlignment.MiddleCenter, .Visible = True,
             .ForeColor = TemaMecano.CinzaClaro, .Font = TemaMecano.FonteCorpo(10.0F), .BackColor = TemaMecano.Branco,
             .Text = "Escolha o período e os filtros e clique em Consultar."}
+    End Sub
+
+    ''' <summary>Por usuário e data: quem está fora do esperado fica em vermelho, como na tela antiga.</summary>
+    Private Sub FormatarCelula(sender As Object, e As DataGridViewCellFormattingEventArgs)
+        If _abaAtiva <> ABA_USUARIO_DATA OrElse e.RowIndex < 0 Then Return
+        If grade.Columns.Contains("Situação") Then
+            Dim situacao = Convert.ToString(grade.Rows(e.RowIndex).Cells("Situação").Value)
+            If situacao <> "Em dia" Then
+                e.CellStyle.ForeColor = TemaMecano.VermelhoPrimario
+                If grade.Columns(e.ColumnIndex).Name = "Colaborador" OrElse grade.Columns(e.ColumnIndex).Name = "Horas" Then
+                    e.CellStyle.Font = TemaMecano.FonteCorpo(9.5F, FontStyle.Bold)
+                End If
+            End If
+        End If
+    End Sub
+
+    ''' <summary>Por funcionário: duplo clique abre a Sintética daquela pessoa no mesmo período (o que o frmTimeFuncionario faz hoje em outra janela).</summary>
+    Private Sub AbrirDetalheDaLinha(indice As Integer)
+        If _abaAtiva <> ABA_FUNCIONARIO OrElse indice < 0 OrElse indice >= _linhasFuncionario.Count Then Return
+        If Not grade.Columns.Contains("Colaborador") Then Return
+        Dim nome = Convert.ToString(grade.Rows(indice).Cells("Colaborador").Value)
+        Dim l = _linhasFuncionario.FirstOrDefault(Function(x) x.Usuario = nome)
+        If l Is Nothing Then Return
+        siDe.Value = fuDe.Value
+        siAte.Value = fuAte.Value
+        siGeral.Checked = True
+        siAcumular.Checked = False
+        siGrupo.SelectedIndex = 0
+        If siEmpresa.Items.Count > 0 Then siEmpresa.SelectedIndex = 0
+        SelecionarColaborador(siColab, l.UsuarioId)
+        EscolherAba(ABA_SINTETICA)
+        Consultar()
+    End Sub
+
+    Private Sub SelecionarColaborador(cbo As ComboBox, usuarioId As Integer)
+        For i = 0 To cbo.Items.Count - 1
+            Dim c = TryCast(cbo.Items(i), ColaboradorResumo)
+            If c IsNot Nothing AndAlso c.Id = usuarioId Then
+                cbo.SelectedIndex = i
+                Return
+            End If
+        Next
+        cbo.SelectedIndex = 0
     End Sub
 
     Private Sub MontarBarraStatus()
@@ -323,8 +527,22 @@ Public Class frmGerenciamentoTime
         lblStatus.Text = texto
     End Sub
 
+    ''' <summary>Texto da barra de status (para os testes).</summary>
+    Public ReadOnly Property TextoStatus As String
+        Get
+            Return lblStatus.Text
+        End Get
+    End Property
+
+    ''' <summary>Linhas que a grade mostra agora (para os testes).</summary>
+    Public ReadOnly Property QuantidadeLinhas As Integer
+        Get
+            Return grade.RowCount
+        End Get
+    End Property
+
     ' =================================================================
-    '  DADOS
+    '  LISTAS (colaboradores, empresas, atividades, grupos)
     ' =================================================================
     Private Sub CarregarListas()
         If Not ModApontamento.PodeGerenciar() Then
@@ -341,53 +559,125 @@ Public Class frmGerenciamentoTime
         Finally
             Me.Cursor = Cursors.Default
         End Try
-        cboColaborador.BeginUpdate()
-        cboColaborador.Items.Clear()
-        cboColaborador.Items.Add(TODOS)
-        For Each c In _colaboradores
-            cboColaborador.Items.Add(c)
-        Next
-        cboColaborador.EndUpdate()
-        cboColaborador.SelectedIndex = 0
 
-        cboEmpresa.BeginUpdate()
-        cboEmpresa.Items.Clear()
-        cboEmpresa.Items.Add(TODAS)
+        PreencherColaboradores(anColab)
+        PreencherColaboradores(siColab)
+        PreencherColaboradores(fuColab)
+
+        anEmpresa.BeginUpdate()
+        anEmpresa.Items.Clear()
+        anEmpresa.Items.Add(TODAS)
         For Each c In _clientes
-            cboEmpresa.Items.Add(c)
+            anEmpresa.Items.Add(c)
         Next
-        cboEmpresa.EndUpdate()
-        cboEmpresa.SelectedIndex = 0
+        anEmpresa.EndUpdate()
+        anEmpresa.SelectedIndex = 0
+
+        siGrupo.BeginUpdate()
+        siGrupo.Items.Clear()
+        siGrupo.Items.Add(TODOS_GRUPOS)
+        For Each grupo In _clientes.Select(Function(c) c.Grupo.Trim()).Where(Function(t) t <> "").Distinct().OrderBy(Function(t) t)
+            siGrupo.Items.Add(grupo)
+        Next
+        siGrupo.EndUpdate()
+        siGrupo.SelectedIndex = 0
+
+        PreencherEmpresasSintetica()
     End Sub
 
-    Private Function FiltroDaTela() As FiltroAnalitica
-        Dim f As New FiltroAnalitica With {.De = dtpDe.Value.Date, .Ate = dtpAte.Value.Date}
-        Dim colab = TryCast(cboColaborador.SelectedItem, ColaboradorResumo)
-        f.Usuario = If(colab Is Nothing, FiltroAnalitica.TODOS_USUARIOS, colab.Nome)
-        Dim emp = TryCast(cboEmpresa.SelectedItem, ClienteResumo)
-        f.Empresa = If(emp Is Nothing, FiltroAnalitica.TODAS_EMPRESAS, emp.Nome)
-        f.EmpresaId = If(emp Is Nothing, "", emp.Tradutor)
-        f.Modo = If(rbCom.Checked, ModoAnalitica.ComCodigoEmpresa, If(rbSem.Checked, ModoAnalitica.SemCodigoEmpresa, ModoAnalitica.Geral))
-        Return f
-    End Function
+    Private Sub PreencherColaboradores(cbo As ComboBox)
+        cbo.BeginUpdate()
+        cbo.Items.Clear()
+        cbo.Items.Add(TODOS)
+        For Each c In _colaboradores
+            cbo.Items.Add(c)
+        Next
+        cbo.EndUpdate()
+        cbo.SelectedIndex = 0
+    End Sub
 
-    ''' <summary>Só para a captura de tela da demonstração.</summary>
+    ''' <summary>
+    ''' A lista "Empresa ou atividade" da Sintética acompanha o modo, como na tela antiga:
+    ''' Tudo = clientes e atividades; Só clientes = clientes; Só atividades = o Outros.txt.
+    ''' </summary>
+    Private Sub PreencherEmpresasSintetica()
+        If siEmpresa Is Nothing Then Return
+        Dim atividades As List(Of String)
+        Try
+            atividades = If(siCom.Checked, New List(Of String)(), ModApontamento.AtividadesInternas())
+        Catch
+            atividades = New List(Of String)()
+        End Try
+        siEmpresa.BeginUpdate()
+        siEmpresa.Items.Clear()
+        siEmpresa.Items.Add(If(siSem.Checked, TODAS_ATIVIDADES, If(siCom.Checked, TODAS, TODAS_E_ATIVIDADES)))
+        If Not siSem.Checked Then
+            For Each c In _clientes
+                siEmpresa.Items.Add(c)
+            Next
+        End If
+        For Each a In atividades
+            siEmpresa.Items.Add(a)
+        Next
+        siEmpresa.EndUpdate()
+        siEmpresa.SelectedIndex = 0
+    End Sub
+
+    ' =================================================================
+    '  CONSULTAR (a aba ativa)
+    ' =================================================================
+    ''' <summary>Consulta a aba ativa (captura da demonstração e testes).</summary>
     Public Sub ConsultarAgora()
         Consultar()
     End Sub
 
-    Private Sub Consultar()
-        If dtpAte.Value.Date < dtpDe.Value.Date Then
+    ''' <summary>Período das quatro abas de uma vez (captura e testes).</summary>
+    Public Sub DefinirPeriodo(de As Date, ate As Date)
+        For Each dtp In New DateTimePicker() {anDe, siDe, fuDe, udDe}
+            dtp.Value = de.Date
+        Next
+        For Each dtp In New DateTimePicker() {anAte, siAte, fuAte, udAte}
+            dtp.Value = ate.Date
+        Next
+    End Sub
+
+    Private Function PeriodoValido(de As DateTimePicker, ate As DateTimePicker) As Boolean
+        If ate.Value.Date < de.Value.Date Then
             MessageBox.Show(Me, "A data final é anterior à inicial.", "Gerenciamento do Time", MessageBoxButtons.OK, MessageBoxIcon.Information)
-            dtpAte.Focus() : Return
+            ate.Focus()
+            Return False
         End If
-        Dim f = FiltroDaTela()
+        Return True
+    End Function
+
+    Private Sub Consultar()
         Me.Cursor = Cursors.WaitCursor
         Try
-            _linhas = ModApontamento.ConsultaAnalitica(f)
-            _filtroAtual = f
+            Select Case _abaAtiva
+                Case ABA_ANALITICA
+                    If Not PeriodoValido(anDe, anAte) Then Return
+                    Dim f = FiltroAnaliticaDaTela()
+                    _linhasAnalitica = ModApontamento.ConsultaAnalitica(f)
+                    _filtroAnalitica = f
+                Case ABA_SINTETICA
+                    If Not PeriodoValido(siDe, siAte) Then Return
+                    Dim f = FiltroSinteticaDaTela()
+                    _linhasSintetica = ModApontamento.ConsultaSintetica(f)
+                    _filtroSintetica = f
+                Case ABA_FUNCIONARIO
+                    If Not PeriodoValido(fuDe, fuAte) Then Return
+                    Dim lista = ModApontamento.ConsultaPorFuncionario(fuDe.Value.Date, fuAte.Value.Date)
+                    Dim colab = TryCast(fuColab.SelectedItem, ColaboradorResumo)
+                    If colab IsNot Nothing Then lista = lista.Where(Function(l) l.UsuarioId = colab.Id).ToList()
+                    _linhasFuncionario = lista
+                    _periodoFuncionario = {fuDe.Value.Date, fuAte.Value.Date}
+                Case ABA_USUARIO_DATA
+                    If Not PeriodoValido(udDe, udAte) Then Return
+                    _linhasUsuarioData = ModApontamento.ConsultaPorUsuarioData(udDe.Value.Date, udAte.Value.Date)
+                    _periodoUsuarioData = {udDe.Value.Date, udAte.Value.Date}
+            End Select
+            _consultada(_abaAtiva) = True
         Catch ex As Exception
-            _linhas = New List(Of LinhaAnalitica)()
             MessageBox.Show(Me, "Não foi possível consultar." & vbCrLf & ex.Message, "Gerenciamento do Time", MessageBoxButtons.OK, MessageBoxIcon.Error)
         Finally
             Me.Cursor = Cursors.Default
@@ -395,7 +685,84 @@ Public Class frmGerenciamentoTime
         Preencher()
     End Sub
 
+    Private Function FiltroAnaliticaDaTela() As FiltroAnalitica
+        Dim f As New FiltroAnalitica With {.De = anDe.Value.Date, .Ate = anAte.Value.Date}
+        Dim colab = TryCast(anColab.SelectedItem, ColaboradorResumo)
+        f.Usuario = If(colab Is Nothing, FiltroAnalitica.TODOS_USUARIOS, colab.Nome)
+        Dim emp = TryCast(anEmpresa.SelectedItem, ClienteResumo)
+        f.Empresa = If(emp Is Nothing, FiltroAnalitica.TODAS_EMPRESAS, emp.Nome)
+        f.EmpresaId = If(emp Is Nothing, "", emp.Tradutor)
+        f.Modo = If(anCom.Checked, ModoAnalitica.ComCodigoEmpresa, If(anSem.Checked, ModoAnalitica.SemCodigoEmpresa, ModoAnalitica.Geral))
+        Return f
+    End Function
+
+    Private Function FiltroSinteticaDaTela() As FiltroSintetica
+        Dim f As New FiltroSintetica With {.De = siDe.Value.Date, .Ate = siAte.Value.Date, .AcumularPorEmpresa = siAcumular.Checked}
+        Dim colab = TryCast(siColab.SelectedItem, ColaboradorResumo)
+        f.Usuario = If(colab Is Nothing, FiltroAnalitica.TODOS_USUARIOS, colab.Nome)
+        Dim emp = TryCast(siEmpresa.SelectedItem, ClienteResumo)
+        If emp IsNot Nothing Then
+            f.Empresa = emp.Nome
+            f.EmpresaId = emp.Tradutor
+        ElseIf siEmpresa.SelectedIndex > 0 AndAlso TypeOf siEmpresa.SelectedItem Is String Then
+            f.Empresa = CStr(siEmpresa.SelectedItem)     ' atividade interna
+            f.EmpresaId = ""
+        Else
+            f.Empresa = FiltroAnalitica.TODAS_EMPRESAS
+            f.EmpresaId = ""
+        End If
+        f.Grupo = If(siGrupo.SelectedIndex <= 0, FiltroSintetica.TODOS_GRUPOS, CStr(siGrupo.SelectedItem))
+        f.Modo = If(siCom.Checked, ModoAnalitica.ComCodigoEmpresa, If(siSem.Checked, ModoAnalitica.SemCodigoEmpresa, ModoAnalitica.Geral))
+        Return f
+    End Function
+
+    ' =================================================================
+    '  PREENCHER A GRADE (conforme a aba)
+    ' =================================================================
     Private Sub Preencher()
+        If Not _consultada(_abaAtiva) Then
+            grade.DataSource = Nothing
+            lblVazio.Text = "Escolha o período e os filtros e clique em Consultar."
+            lblVazio.Visible = True
+            btnExportar.Enabled = False
+            MostrarMensagem("")
+            Return
+        End If
+        Select Case _abaAtiva
+            Case ABA_ANALITICA : PreencherAnalitica()
+            Case ABA_SINTETICA : PreencherSintetica()
+            Case ABA_FUNCIONARIO : PreencherFuncionario()
+            Case ABA_USUARIO_DATA : PreencherUsuarioData()
+        End Select
+    End Sub
+
+    Private Sub Coluna(nome As String, peso As Single, Optional direita As Boolean = False, Optional negrito As Boolean = False, Optional apagado As Boolean = False)
+        If Not grade.Columns.Contains(nome) Then Return
+        Dim c = grade.Columns(nome)
+        c.FillWeight = peso
+        If direita Then
+            c.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight
+            c.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleRight
+        End If
+        If negrito Then c.DefaultCellStyle.Font = TemaMecano.FonteCorpo(9.5F, FontStyle.Bold)
+        If apagado Then c.DefaultCellStyle.ForeColor = TemaMecano.CinzaClaro
+    End Sub
+
+    Private Sub AplicarTabela(dt As DataTable, vazio As String)
+        grade.SuspendLayout()
+        grade.DataSource = dt
+        grade.ResumeLayout()
+        grade.ClearSelection()
+        lblVazio.Text = vazio
+        lblVazio.Visible = (dt.Rows.Count = 0)
+        btnExportar.Enabled = (dt.Rows.Count > 0)
+    End Sub
+
+    Private Function TextoPeriodo(de As Date, ate As Date) As String
+        Return de.ToString("dd/MM") & " a " & ate.ToString("dd/MM/yyyy")
+    End Function
+
+    Private Sub PreencherAnalitica()
         Dim dt As New DataTable()
         dt.Columns.Add("Data", GetType(Date))
         dt.Columns.Add("Dia", GetType(String))
@@ -404,52 +771,185 @@ Public Class frmGerenciamentoTime
         dt.Columns.Add("Empresa", GetType(String))
         dt.Columns.Add("Código", GetType(String))
         dt.Columns.Add("Horas", GetType(String))
-        For Each l In _linhas
+        For Each l In _linhasAnalitica
             dt.Rows.Add(l.Data, Apontamento.PtBr.DateTimeFormat.GetAbbreviatedDayName(l.Data.DayOfWeek).TrimEnd("."c), l.Usuario, l.Depto, l.Empresa, If(l.EhCliente, l.EmpresaId, ""), l.HorasTexto)
         Next
-        grade.SuspendLayout()
-        grade.DataSource = dt
+        AplicarTabela(dt, "Nenhum apontamento com esses filtros.")
         If grade.Columns.Count > 0 Then
-            grade.Columns("Data").FillWeight = 9
-            grade.Columns("Data").DefaultCellStyle.Format = "dd/MM/yyyy"
-            grade.Columns("Dia").FillWeight = 5
-            grade.Columns("Dia").DefaultCellStyle.ForeColor = TemaMecano.CinzaClaro
-            grade.Columns("Colaborador").FillWeight = 20
-            grade.Columns("Depto").FillWeight = 10
-            grade.Columns("Empresa").FillWeight = 36
-            grade.Columns("Código").FillWeight = 7
-            grade.Columns("Horas").FillWeight = 7
-            grade.Columns("Horas").DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight
-            grade.Columns("Horas").HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleRight
-            grade.Columns("Horas").DefaultCellStyle.Font = TemaMecano.FonteCorpo(9.5F, FontStyle.Bold)
+            Coluna("Data", 9) : grade.Columns("Data").DefaultCellStyle.Format = "dd/MM/yyyy"
+            Coluna("Dia", 5, apagado:=True)
+            Coluna("Colaborador", 20)
+            Coluna("Depto", 10)
+            Coluna("Empresa", 36)
+            Coluna("Código", 7)
+            Coluna("Horas", 7, direita:=True, negrito:=True)
         End If
-        grade.ResumeLayout()
-        grade.ClearSelection()
-
-        lblVazio.Visible = (_linhas.Count = 0)
-        lblVazio.Text = "Nenhum apontamento com esses filtros."
-        btnExportar.Enabled = (_linhas.Count > 0)
-        Dim f = _filtroAtual
+        Dim f = _filtroAnalitica
         Dim quem = If(f Is Nothing OrElse f.TodosUsuarios, "toda a equipe", f.Usuario)
-        MostrarMensagem(_linhas.Count & If(_linhas.Count = 1, " apontamento", " apontamentos") & "  ·  " & Apontamento.FormatarHoras(_linhas.Sum(Function(l) l.Horas)) & " no total  ·  " &
-                        quem & If(f Is Nothing, "", "  ·  " & f.De.ToString("dd/MM") & " a " & f.Ate.ToString("dd/MM/yyyy")))
+        MostrarMensagem(_linhasAnalitica.Count & If(_linhasAnalitica.Count = 1, " apontamento", " apontamentos") & "  ·  " & Apontamento.FormatarHoras(_linhasAnalitica.Sum(Function(l) l.Horas)) & " no total  ·  " &
+                        quem & If(f Is Nothing, "", "  ·  " & TextoPeriodo(f.De, f.Ate)))
+    End Sub
+
+    ''' <summary>Linhas da Sintética como a tela mostra: acumuladas por empresa quando a opção está marcada.</summary>
+    Private Function LinhasSinteticaExibidas() As List(Of LinhaSintetica)
+        If _filtroSintetica IsNot Nothing AndAlso _filtroSintetica.AcumularPorEmpresa Then
+            Return LinhaSintetica.AcumularPorEmpresa(_linhasSintetica)
+        End If
+        Return _linhasSintetica
+    End Function
+
+    Private Sub PreencherSintetica()
+        Dim linhas = LinhasSinteticaExibidas()
+        Dim acumulada = (_filtroSintetica IsNot Nothing AndAlso _filtroSintetica.AcumularPorEmpresa)
+        Dim dt As New DataTable()
+        dt.Columns.Add("Código", GetType(String))
+        dt.Columns.Add("Empresa ou atividade", GetType(String))
+        dt.Columns.Add("CNPJ", GetType(String))
+        dt.Columns.Add("Grupo", GetType(String))
+        If Not acumulada Then dt.Columns.Add("Colaborador", GetType(String))
+        dt.Columns.Add("Mês", GetType(String))
+        dt.Columns.Add("Horas", GetType(String))
+        For Each l In linhas
+            Dim cnpj = (New ClienteResumo With {.Cnpj = l.Cnpj}).CnpjFormatado
+            If acumulada Then
+                dt.Rows.Add(l.Codigo, l.Empresa, cnpj, l.Grupo, l.MesTexto, l.HorasTexto)
+            Else
+                dt.Rows.Add(l.Codigo, l.Empresa, cnpj, l.Grupo, l.Usuario, l.MesTexto, l.HorasTexto)
+            End If
+        Next
+        AplicarTabela(dt, "Nenhum apontamento com esses filtros.")
+        If grade.Columns.Count > 0 Then
+            Coluna("Código", 7)
+            Coluna("Empresa ou atividade", If(acumulada, 44, 32))
+            Coluna("CNPJ", 13, apagado:=True)
+            Coluna("Grupo", 14)
+            Coluna("Colaborador", 18)
+            Coluna("Mês", 8)
+            Coluna("Horas", 8, direita:=True, negrito:=True)
+        End If
+        Dim f = _filtroSintetica
+        Dim quem = If(f Is Nothing OrElse f.TodosUsuarios, "toda a equipe", f.Usuario)
+        Dim empresas = linhas.Select(Function(l) l.ChaveEmpresa).Distinct().Count()
+        MostrarMensagem(linhas.Count & If(linhas.Count = 1, " linha", " linhas") & "  ·  " & empresas & If(empresas = 1, " empresa", " empresas") & "  ·  " &
+                        Apontamento.FormatarHoras(_linhasSintetica.Sum(Function(l) l.Horas)) & " no total  ·  " & quem &
+                        If(f Is Nothing, "", "  ·  " & TextoPeriodo(f.De, f.Ate)))
+    End Sub
+
+    Private Sub PreencherFuncionario()
+        Dim dt As New DataTable()
+        dt.Columns.Add("Colaborador", GetType(String))
+        dt.Columns.Add("Depto", GetType(String))
+        dt.Columns.Add("Função", GetType(String))
+        dt.Columns.Add("Diretas", GetType(String))
+        dt.Columns.Add("Indiretas", GetType(String))
+        dt.Columns.Add("Total", GetType(String))
+        dt.Columns.Add("% diretas", GetType(String))
+        dt.Columns.Add("% indiretas", GetType(String))
+        For Each l In _linhasFuncionario
+            dt.Rows.Add(l.Usuario, l.Depto, l.Funcao, Apontamento.FormatarHoras(l.HorasDiretas), Apontamento.FormatarHoras(l.HorasIndiretas),
+                        Apontamento.FormatarHoras(l.Total), l.PercDiretas & "%", l.PercIndiretas & "%")
+        Next
+        AplicarTabela(dt, "Ninguém tem apontamento nesse período.")
+        If grade.Columns.Count > 0 Then
+            Coluna("Colaborador", 24)
+            Coluna("Depto", 11)
+            Coluna("Função", 19)
+            Coluna("Diretas", 9, direita:=True)
+            Coluna("Indiretas", 9, direita:=True)
+            Coluna("Total", 9, direita:=True, negrito:=True)
+            Coluna("% diretas", 9, direita:=True, apagado:=True)
+            Coluna("% indiretas", 10, direita:=True, apagado:=True)
+        End If
+        Dim diretas = _linhasFuncionario.Sum(Function(l) l.HorasDiretas)
+        Dim indiretas = _linhasFuncionario.Sum(Function(l) l.HorasIndiretas)
+        Dim p = _periodoFuncionario
+        MostrarMensagem(_linhasFuncionario.Count & If(_linhasFuncionario.Count = 1, " pessoa", " pessoas") & "  ·  diretas " & Apontamento.FormatarHoras(diretas) &
+                        "  ·  indiretas " & Apontamento.FormatarHoras(indiretas) & "  ·  total " & Apontamento.FormatarHoras(diretas + indiretas) &
+                        If(p Is Nothing, "", "  ·  " & TextoPeriodo(p(0), p(1))))
+    End Sub
+
+    Private Sub PreencherUsuarioData()
+        Dim dt As New DataTable()
+        dt.Columns.Add("Colaborador", GetType(String))
+        dt.Columns.Add("Depto", GetType(String))
+        dt.Columns.Add("Horas", GetType(String))
+        dt.Columns.Add("Esperado", GetType(String))
+        dt.Columns.Add("Diferença", GetType(String))
+        dt.Columns.Add("Situação", GetType(String))
+        For Each l In _linhasUsuarioData
+            dt.Rows.Add(l.Usuario, l.Depto, Apontamento.FormatarHoras(l.Horas), Apontamento.FormatarHoras(l.Esperado),
+                        If(l.Diferenca >= 0D, "+", "") & Apontamento.FormatarHoras(l.Diferenca), l.Situacao)
+        Next
+        AplicarTabela(dt, "Nenhum colaborador para mostrar.")
+        If grade.Columns.Count > 0 Then
+            Coluna("Colaborador", 30)
+            Coluna("Depto", 14)
+            Coluna("Horas", 12, direita:=True, negrito:=True)
+            Coluna("Esperado", 12, direita:=True)
+            Coluna("Diferença", 12, direita:=True)
+            Coluna("Situação", 12)
+        End If
+        Dim abaixo = _linhasUsuarioData.Where(Function(l) l.Horas < l.Esperado).Count()
+        Dim acima = _linhasUsuarioData.Where(Function(l) l.Horas > l.Esperado + LinhaUsuarioData.TOLERANCIA).Count()
+        Dim p = _periodoUsuarioData
+        MostrarMensagem(_linhasUsuarioData.Count & If(_linhasUsuarioData.Count = 1, " pessoa", " pessoas") & "  ·  " & abaixo & " abaixo do esperado  ·  " & acima & " acima  ·  " &
+                        Apontamento.FormatarHoras(_linhasUsuarioData.Sum(Function(l) l.Horas)) & " no total" &
+                        If(p Is Nothing, "", "  ·  " & TextoPeriodo(p(0), p(1))))
     End Sub
 
     ' =================================================================
-    '  EXPORTAR
+    '  EXPORTAR (CSV da aba ativa, com linha de total)
     ' =================================================================
     Private Sub Exportar()
-        If _linhas.Count = 0 Then Return
-        Using dlg As New SaveFileDialog With {.Filter = "CSV (*.csv)|*.csv", .FileName = "time-analitica-" & dtpDe.Value.ToString("yyyy-MM-dd") & "-a-" & dtpAte.Value.ToString("yyyy-MM-dd") & ".csv"}
+        Dim sb As New StringBuilder()
+        Dim nome As String
+        Select Case _abaAtiva
+            Case ABA_ANALITICA
+                If _linhasAnalitica.Count = 0 Then Return
+                nome = "time-analitica-" & NomePeriodo(anDe, anAte)
+                sb.AppendLine("Data;Dia;Colaborador;Depto;Empresa;Código;Horas;Horas (decimal)")
+                For Each l In _linhasAnalitica.OrderBy(Function(x) x.Data).ThenBy(Function(x) x.Usuario)
+                    sb.AppendLine(l.Data.ToString("dd/MM/yyyy") & ";" & Apontamento.PtBr.DateTimeFormat.GetAbbreviatedDayName(l.Data.DayOfWeek).TrimEnd("."c) & ";" &
+                                  l.Usuario & ";" & l.Depto & ";" & Csv(l.Empresa) & ";" & If(l.EhCliente, l.EmpresaId, "") & ";" &
+                                  l.HorasTexto & ";" & Apontamento.FormatarDecimal(l.Horas))
+                Next
+                sb.AppendLine(";;;;;;Total;" & Apontamento.FormatarDecimal(_linhasAnalitica.Sum(Function(l) l.Horas)))
+            Case ABA_SINTETICA
+                Dim linhas = LinhasSinteticaExibidas()
+                If linhas.Count = 0 Then Return
+                nome = "time-sintetica-" & NomePeriodo(siDe, siAte)
+                sb.AppendLine("Código;Empresa ou atividade;CNPJ;Grupo;Colaborador;Ano;Mês;Horas;Horas (decimal)")
+                For Each l In linhas
+                    sb.AppendLine(l.Codigo & ";" & Csv(l.Empresa) & ";" & l.Cnpj & ";" & Csv(l.Grupo) & ";" & l.Usuario & ";" & l.Ano & ";" & l.Mes & ";" &
+                                  l.HorasTexto & ";" & Apontamento.FormatarDecimal(l.Horas))
+                Next
+                sb.AppendLine(";;;;;;;Total;" & Apontamento.FormatarDecimal(_linhasSintetica.Sum(Function(l) l.Horas)))
+            Case ABA_FUNCIONARIO
+                If _linhasFuncionario.Count = 0 Then Return
+                nome = "time-por-funcionario-" & NomePeriodo(fuDe, fuAte)
+                sb.AppendLine("Colaborador;Depto;Função;Diretas;Indiretas;Total;% diretas;% indiretas;Diretas (decimal);Indiretas (decimal);Total (decimal)")
+                For Each l In _linhasFuncionario
+                    sb.AppendLine(l.Usuario & ";" & l.Depto & ";" & Csv(l.Funcao) & ";" & Apontamento.FormatarHoras(l.HorasDiretas) & ";" & Apontamento.FormatarHoras(l.HorasIndiretas) & ";" &
+                                  Apontamento.FormatarHoras(l.Total) & ";" & l.PercDiretas & ";" & l.PercIndiretas & ";" &
+                                  Apontamento.FormatarDecimal(l.HorasDiretas) & ";" & Apontamento.FormatarDecimal(l.HorasIndiretas) & ";" & Apontamento.FormatarDecimal(l.Total))
+                Next
+                sb.AppendLine("Total;;;" & Apontamento.FormatarHoras(_linhasFuncionario.Sum(Function(l) l.HorasDiretas)) & ";" & Apontamento.FormatarHoras(_linhasFuncionario.Sum(Function(l) l.HorasIndiretas)) & ";" &
+                              Apontamento.FormatarHoras(_linhasFuncionario.Sum(Function(l) l.Total)) & ";;;" &
+                              Apontamento.FormatarDecimal(_linhasFuncionario.Sum(Function(l) l.HorasDiretas)) & ";" & Apontamento.FormatarDecimal(_linhasFuncionario.Sum(Function(l) l.HorasIndiretas)) & ";" &
+                              Apontamento.FormatarDecimal(_linhasFuncionario.Sum(Function(l) l.Total)))
+            Case Else
+                If _linhasUsuarioData.Count = 0 Then Return
+                nome = "time-por-usuario-" & NomePeriodo(udDe, udAte)
+                sb.AppendLine("Colaborador;Depto;Horas;Esperado;Diferença;Situação;Horas (decimal)")
+                For Each l In _linhasUsuarioData
+                    sb.AppendLine(l.Usuario & ";" & l.Depto & ";" & Apontamento.FormatarHoras(l.Horas) & ";" & Apontamento.FormatarHoras(l.Esperado) & ";" &
+                                  If(l.Diferenca >= 0D, "+", "") & Apontamento.FormatarHoras(l.Diferenca) & ";" & l.Situacao & ";" & Apontamento.FormatarDecimal(l.Horas))
+                Next
+                sb.AppendLine("Total;;" & Apontamento.FormatarHoras(_linhasUsuarioData.Sum(Function(l) l.Horas)) & ";;;;" & Apontamento.FormatarDecimal(_linhasUsuarioData.Sum(Function(l) l.Horas)))
+        End Select
+
+        Using dlg As New SaveFileDialog With {.Filter = "CSV (*.csv)|*.csv", .FileName = nome & ".csv"}
             If dlg.ShowDialog(Me) <> DialogResult.OK Then Return
-            Dim sb As New StringBuilder()
-            sb.AppendLine("Data;Dia;Colaborador;Depto;Empresa;Código;Horas;Horas (decimal)")
-            For Each l In _linhas.OrderBy(Function(x) x.Data).ThenBy(Function(x) x.Usuario)
-                sb.AppendLine(l.Data.ToString("dd/MM/yyyy") & ";" & Apontamento.PtBr.DateTimeFormat.GetAbbreviatedDayName(l.Data.DayOfWeek).TrimEnd("."c) & ";" &
-                              l.Usuario & ";" & l.Depto & ";" & l.Empresa.Replace(";", ",") & ";" & If(l.EhCliente, l.EmpresaId, "") & ";" &
-                              l.HorasTexto & ";" & Apontamento.FormatarDecimal(l.Horas))
-            Next
-            sb.AppendLine(";;;;;;Total;" & Apontamento.FormatarDecimal(_linhas.Sum(Function(l) l.Horas)))
             Try
                 File.WriteAllText(dlg.FileName, sb.ToString(), New UTF8Encoding(True))
                 Process.Start(dlg.FileName)
@@ -458,5 +958,13 @@ Public Class frmGerenciamentoTime
             End Try
         End Using
     End Sub
+
+    Private Function NomePeriodo(de As DateTimePicker, ate As DateTimePicker) As String
+        Return de.Value.ToString("yyyy-MM-dd") & "-a-" & ate.Value.ToString("yyyy-MM-dd")
+    End Function
+
+    Private Function Csv(s As String) As String
+        Return If(s, "").Replace(";", ",")
+    End Function
 
 End Class

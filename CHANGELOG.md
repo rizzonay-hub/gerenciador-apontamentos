@@ -1,5 +1,18 @@
 # Histórico — Apontamentos de horas
 
+## 16/10/2026 (noite) — Gerenciamento do Time completo
+
+**Novo**
+- As três abas que estavam "em breve" no `frmGerenciamentoTime`, cada uma com as procedures e a escolha entre elas da tela antiga correspondente:
+  - **Sintética** (`frmTimeConsultaAcumulado`): horas por empresa ou atividade, colaborador e mês; filtros de colaborador, empresa ou atividade (a lista acompanha o modo), grupo de empresas e "Mostrar"; "Somar todos os colaboradores por empresa" (o "Acumular por Empresa"). `ModApontamento.ConsultaSintetica`, `Time_GetByEmpresaAcumuladoGeralComSem/Geral/SC/SCTE/CC/CCTE`.
+  - **Por funcionário** (`frmTimeFuncionario`, "Consulta Geral"): diretas, indiretas, total e percentuais por pessoa, com departamento e função; duplo clique abre a Sintética da pessoa. `ConsultaPorFuncionario`, `Time_GetByDataTudoHorasCustoDireto/Indireto`.
+  - **Por usuário e data** (`frmTimeConsultausuario`): total por pessoa no intervalo, esperado (8h00 dia útil, 4h00 sábado), diferença e situação; quem não lançou entra com 0h00; vermelho fora do esperado. `ConsultaPorUsuarioData`, `Time_GetByEmpresaUsuario`.
+- `frmGerenciamentoTime.Abrir(aba)`: os quatro itens do menu Gerenciamento abrem a mesma tela, cada um na sua aba. Exportar CSV em todas as abas, com totais.
+- Modelos em `Apontamento.vb`: `FiltroSintetica`, `LinhaSintetica` (com `AcumularPorEmpresa`), `LinhaFuncionario`, `LinhaUsuarioData` (com `HorasEsperadas` e a regra do vermelho). `ColaboradorResumo.Funcao` (TbSenha.FUNCAO).
+- Demo: as mesmas consultas sobre o txt; capturas 09, 10 e 11; teste sem interface com 42 verificações cruzando as três abas com a Analítica.
+
+**Não copiado das telas antigas, de propósito** (totais iguais; detalhes no IMPLANTACAO.md): a conversão de horas que trocava o número na consulta por usuário; os nomes fixos no código (diretoria escondida, seis usuários fora da lista); as atividades sem código juntas numa linha só no "Acumular por Empresa".
+
 ## 16/10/2026 (tarde) — hierarquia do menu Time dentro da tela
 
 **Novo**
