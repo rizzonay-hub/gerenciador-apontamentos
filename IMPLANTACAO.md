@@ -33,16 +33,120 @@ A pasta `preprod\` tem só os sete arquivos que entram no Gerenciador, nada da d
 
 ## Passo 2 — Menu (`Base\frmMain.vb`)
 
-- [ ] Em **Apontamentos › Time › Anotações**, trocar `New frmTimeDet(0)…Show()` por `frmApontamentos.Abrir()`.
-- [ ] Em **Apontamentos › Time › Consulta** (`frmTime`): apontar para `frmApontamentos.Abrir()` também, ou retirar do menu (decisão em aberto; em pré-produção, apontar para a tela nova).
-- [ ] Em **Apontamentos › Time › Anotações Período**, trocar `AbrirFormulario(Of frmTimePeriodo)()` por abrir `New frmApontamentoPeriodo()` com `ShowDialog()`.
-- [ ] Em **Apontamentos › Time › Gerenciamento**, os quatro itens passam a abrir a mesma tela, cada um na sua aba:
-  - Consulta Analítica: `AbrirFormulario(Of frmTimeConsulta)()` → `frmGerenciamentoTime.Abrir()`
-  - Sintética: `frmTimeConsultaAcumulado` → `frmGerenciamentoTime.Abrir(frmGerenciamentoTime.ABA_SINTETICA)`
-  - Geral: `frmTimeFuncionario` → `frmGerenciamentoTime.Abrir(frmGerenciamentoTime.ABA_FUNCIONARIO)`
-  - Acumulada por Usuário e Data: `frmTimeConsultausuario` → `frmGerenciamentoTime.Abrir(frmGerenciamentoTime.ABA_USUARIO_DATA)`
-- [ ] Deixar `frmTimeDet`, `frmTime`, `frmTimePeriodo`, `frmTimeConsulta`, `frmTimeConsultaAcumulado`, `frmTimeFuncionario` e `frmTimeConsultausuario` no projeto. São o caminho de volta e servem para a comparação do roteiro abaixo.
-- [ ] Na tela principal nova (quando subir), o item "Apontamentos" da barra lateral e o atalho "Horas" chamam `frmApontamentos` com `Embutir()`.
+Tudo deste passo é em **um arquivo só**, `Base\frmMain.vb`, dentro do bloco `#Region "Menus — Arquivo / Gerenciamento"` (por volta das linhas 830 a 905). Nada muda no `frmMain.Designer.vb`: os itens do menu continuam os mesmos, com os mesmos nomes; só troca o que cada clique abre. Os nomes dos `Sub` e a cláusula `Handles` ficam como estão, porque é o `Handles` que liga o item do menu ao código.
+
+O menu **Apontamentos › Time** tem hoje estes itens, nesta ordem:
+
+| Item do menu | `Sub` no frmMain.vb | Abre hoje | Passa a abrir |
+|---|---|---|---|
+| Anotações | `AnotaçõesToolStripMenuItem_Click` | `frmTimeDet(0)` | `frmApontamentos.Abrir()` |
+| Anotações Período | `AnotaçõesPeríodoToolStripMenuItem_Click` | `frmTimePeriodo` | `frmApontamentoPeriodo` (janela modal) |
+| Consulta | `ConsultaToolStripMenuItem1_Click` | `frmTime` | `frmApontamentos.Abrir()` (a lista é a mesma tela) |
+| Gerenciamento › Consulta Analítica | `ConsultaToolStripMenuItem6_Click` | `frmTimeConsulta` | `frmGerenciamentoTime.Abrir()` |
+| Gerenciamento › Consulta Sintética | `ConsultaAcumuladaToolStripMenuItem_Click` | `frmTimeConsultaAcumulado` | `frmGerenciamentoTime.Abrir(frmGerenciamentoTime.ABA_SINTETICA)` |
+| Gerenciamento › Consulta Geral | `ToolStripMenuItem29_Click` | `frmTimeFuncionario` | `frmGerenciamentoTime.Abrir(frmGerenciamentoTime.ABA_FUNCIONARIO)` |
+| Gerenciamento › Consulta Analítica Acumulada por Usuário e Data | `ConsultaAnalíticaAcumuladaPoUsuárioEDataToolStripMenuItem_Click` | `frmTimeConsultausuario` | `frmGerenciamentoTime.Abrir(frmGerenciamentoTime.ABA_USUARIO_DATA)` |
+| Gerenciamento › Controle do Ponto | — | `frmEntradaSaidaConsulta` | **não mexer** (fora da entrega) |
+
+### 2.1 — O que está lá hoje
+
+Os sete `Sub` estão espalhados pelo bloco (entre eles há itens de outros menus; esses ficam como estão). São estes, exatamente como estão em produção:
+
+```vb
+Private Sub AnotaçõesToolStripMenuItem_Click(sender As Object, e As EventArgs) Handles AnotaçõesToolStripMenuItem.Click
+    Dim f As New frmTimeDet(0)
+    f.MaximizeBox = True : f.MinimizeBox = True : f.ShowInTaskbar = True : f.Show()
+End Sub
+
+Private Sub ConsultaToolStripMenuItem1_Click(sender As Object, e As EventArgs) Handles ConsultaToolStripMenuItem1.Click
+    AbrirFormulario(Of frmTime)()
+End Sub
+
+Private Sub ConsultaToolStripMenuItem6_Click(sender As Object, e As EventArgs) Handles ConsultaToolStripMenuItem6.Click
+    AbrirFormulario(Of frmTimeConsulta)()
+End Sub
+
+Private Sub ConsultaAcumuladaToolStripMenuItem_Click(sender As Object, e As EventArgs) Handles ConsultaAcumuladaToolStripMenuItem.Click
+    AbrirFormulario(Of frmTimeConsultaAcumulado)()
+End Sub
+
+Private Sub ConsultaAnalíticaAcumuladaPoUsuárioEDataToolStripMenuItem_Click(sender As Object, e As EventArgs) Handles ConsultaAnalíticaAcumuladaPoUsuárioEDataToolStripMenuItem.Click
+    AbrirFormulario(Of frmTimeConsultausuario)()
+End Sub
+
+Private Sub ToolStripMenuItem29_Click(sender As Object, e As EventArgs) Handles ToolStripMenuItem29.Click
+    AbrirFormulario(Of frmTimeFuncionario)()
+End Sub
+
+Private Sub AnotaçõesPeríodoToolStripMenuItem_Click(sender As Object, e As EventArgs) Handles AnotaçõesPeríodoToolStripMenuItem.Click
+    AbrirFormulario(Of frmTimePeriodo)()
+End Sub
+```
+
+### 2.2 — Como fica
+
+Trocar **só o corpo** de cada um dos sete `Sub` (a linha `Private Sub … Handles …` e o `End Sub` ficam iguais):
+
+```vb
+' Apontamentos > Time > Anotações: a tela nova de apontamentos (lista, cartões e lançamento).
+Private Sub AnotaçõesToolStripMenuItem_Click(sender As Object, e As EventArgs) Handles AnotaçõesToolStripMenuItem.Click
+    frmApontamentos.Abrir()
+End Sub
+
+' Apontamentos > Time > Consulta: a lista já está na tela nova; abre a mesma tela.
+Private Sub ConsultaToolStripMenuItem1_Click(sender As Object, e As EventArgs) Handles ConsultaToolStripMenuItem1.Click
+    frmApontamentos.Abrir()
+End Sub
+
+' Apontamentos > Time > Gerenciamento > Consulta Analítica
+Private Sub ConsultaToolStripMenuItem6_Click(sender As Object, e As EventArgs) Handles ConsultaToolStripMenuItem6.Click
+    frmGerenciamentoTime.Abrir(frmGerenciamentoTime.ABA_ANALITICA)
+End Sub
+
+' Apontamentos > Time > Gerenciamento > Consulta Sintética
+Private Sub ConsultaAcumuladaToolStripMenuItem_Click(sender As Object, e As EventArgs) Handles ConsultaAcumuladaToolStripMenuItem.Click
+    frmGerenciamentoTime.Abrir(frmGerenciamentoTime.ABA_SINTETICA)
+End Sub
+
+' Apontamentos > Time > Gerenciamento > Consulta Analítica Acumulada por Usuário e Data
+Private Sub ConsultaAnalíticaAcumuladaPoUsuárioEDataToolStripMenuItem_Click(sender As Object, e As EventArgs) Handles ConsultaAnalíticaAcumuladaPoUsuárioEDataToolStripMenuItem.Click
+    frmGerenciamentoTime.Abrir(frmGerenciamentoTime.ABA_USUARIO_DATA)
+End Sub
+
+' Apontamentos > Time > Gerenciamento > Consulta Geral
+Private Sub ToolStripMenuItem29_Click(sender As Object, e As EventArgs) Handles ToolStripMenuItem29.Click
+    frmGerenciamentoTime.Abrir(frmGerenciamentoTime.ABA_FUNCIONARIO)
+End Sub
+
+' Apontamentos > Time > Anotações Período: janela modal, em nome de outra pessoa (gestor e diretoria).
+Private Sub AnotaçõesPeríodoToolStripMenuItem_Click(sender As Object, e As EventArgs) Handles AnotaçõesPeríodoToolStripMenuItem.Click
+    Using f As New frmApontamentoPeriodo()
+        f.ShowDialog(Me)
+    End Using
+End Sub
+```
+
+Por que cada forma de abrir:
+
+- `frmApontamentos.Abrir()` e `frmGerenciamentoTime.Abrir(aba)` são `Shared`: abrem a tela uma vez só e, se ela já estiver aberta, trazem para a frente (na aba pedida, no caso do Gerenciamento). Não precisam do `AbrirFormulario(Of …)()`, que criaria uma janela nova a cada clique.
+- `frmApontamentoPeriodo` é uma janela de confirmação, por isso `ShowDialog(Me)` dentro de `Using`, como a própria tela de apontamentos faz pelo botão "Lançar período".
+- `MaximizeBox`, `MinimizeBox` e `ShowInTaskbar` já são verdadeiros por padrão num Form; as três atribuições que o item Anotações fazia não precisam ser repetidas.
+
+### 2.3 — Conferir antes de compilar
+
+- [ ] Os sete `Sub` continuam com o mesmo nome e o mesmo `Handles` (se o Visual Studio mostrar "evento sem manipulador" no Designer, foi mudado o nome por engano).
+- [ ] Nenhuma linha do `frmMain.Designer.vb` foi alterada.
+- [ ] O item **Controle do Ponto** continua abrindo `frmEntradaSaidaConsulta`.
+- [ ] As telas antigas (`frmTimeDet`, `frmTime`, `frmTimePeriodo`, `frmTimeConsulta`, `frmTimeConsultaAcumulado`, `frmTimeFuncionario`, `frmTimeConsultausuario`) **continuam no projeto** e no `.vbproj`. Não apagar: são o caminho de volta e servem para a comparação do roteiro do passo 4. Elas só deixam de estar no menu.
+- [ ] `ModApontamento.AposGravar()` chama `Opl2.menuacesso()` depois de gravar ou excluir; esse `Sub` é público no `frmMain.vb` (classe `Opl2`) e já existe. Nada a fazer, só saber que é daí que a trava de horas é reavaliada.
+
+### 2.4 — Voltar atrás
+
+Se precisar voltar para as telas antigas, é só devolver os sete corpos de 2.1. Nada no banco muda num sentido nem no outro.
+
+### 2.5 — Depois, na tela principal nova
+
+Quando a proposta da tela principal subir, o item "Apontamentos" da barra lateral e o atalho "Horas" chamam `frmApontamentos` com `Embutir()`; não é parte deste passo.
 
 ## Passo 3 — Compilar
 
