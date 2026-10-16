@@ -1,0 +1,24 @@
+﻿Administrativo
+Afastamento
+Arquivo / organizacao
+Auditoria
+Avaliacao de colaboradores
+Banco de horas
+Consulta medica
+Day-off
+Disponivel
+Estudos Tecnicos / treinamento / orientacao / pesquisas
+Feriado
+Ferias
+Folga
+IRPF
+Licenca maternidade /paternidade/ amamentacao
+Menor aprendiz
+Problemas com Sistemas / computador / falta de energia
+Ressarcimento ST
+Sabado
+Sextou (*)
+Short-friday
+FEEDZ
+Projetos de RH
+Outros - contrato trabalho

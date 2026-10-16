@@ -1,0 +1,13 @@
+# binários e fonte licenciada ficam fora do repositório
+*.exe
+*.otf
+*.bak
+*.pdb
+
+# dados gerados pela demonstração (recriados na primeira abertura)
+apontamentos.txt
+
+# lixo do Windows/OneDrive
+Thumbs.db
+desktop.ini
+~$*
