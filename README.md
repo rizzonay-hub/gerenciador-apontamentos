@@ -85,15 +85,17 @@ As quatro abas usam as mesmas procedures das telas antigas (`Time_GetByEmpresa*`
 
 ### Arquivos
 
+A pasta `preprod\` tem só o que entra no Gerenciador: os sete `.vb` abaixo, nada da demonstração.
+
 | Arquivo | Entra no Gerenciador? | O que é |
 |---|---|---|
-| `Apontamento.vb` | **sim** → `Grupo_Mecano\Cadastro\` | Modelos: `Apontamento`, `ClienteResumo`, `ResumoHoras` (regra da trava de horas), `BancoHoras` (rateio, teto de 10 h e banco de horas). |
-| `ModApontamento.vb` | **sim** → `Grupo_Mecano\App_Code\` | Acesso a dados SQL: procedures `Time_*`, `HorasMes_GetList`, `TbClientes`, `Outros.txt`, `AposGravar` → `Opl2.menuacesso()`. |
-| `frmApontamentos.vb` | **sim** → `Grupo_Mecano\Cadastro\` | Tela principal (lista, cartões, período, busca, exportar). Tem `Abrir()` e `Embutir()`. |
-| `frmApontamentoDet.vb` | **sim** → `Grupo_Mecano\Cadastro\` | Lançamento novo / alterar; várias empresas (mesmo tempo ou rateio); trava de 10 h. |
-| `frmBancoHoras.vb` | **sim** → `Grupo_Mecano\Cadastro\` | Extrato do banco de horas (só leitura). |
-| `frmApontamentoPeriodo.vb` | **sim** → `Grupo_Mecano\Cadastro\` | "Anotações por período": férias/afastamento no nome de outra pessoa (gestor e diretoria). |
-| `frmGerenciamentoTime.vb` | **sim** → `Grupo_Mecano\Cadastro\` | "Gerenciamento do Time": as quatro consultas de gestão em abas (Analítica, Sintética, Por funcionário, Por usuário e data), só leitura, com exportação (gestor e diretoria). |
+| `preprod\Apontamento.vb` | **sim** → `Grupo_Mecano\Cadastro\` | Modelos: `Apontamento`, `ClienteResumo`, `ResumoHoras` (regra da trava de horas), `BancoHoras` (rateio, teto de 10 h e banco de horas). |
+| `preprod\ModApontamento.vb` | **sim** → `Grupo_Mecano\App_Code\` | Acesso a dados SQL: procedures `Time_*`, `HorasMes_GetList`, `TbClientes`, `Outros.txt`, `AposGravar` → `Opl2.menuacesso()`. |
+| `preprod\frmApontamentos.vb` | **sim** → `Grupo_Mecano\Cadastro\` | Tela principal (lista, cartões, período, busca, exportar). Tem `Abrir()` e `Embutir()`. |
+| `preprod\frmApontamentoDet.vb` | **sim** → `Grupo_Mecano\Cadastro\` | Lançamento novo / alterar; várias empresas (mesmo tempo ou rateio); trava de 10 h. |
+| `preprod\frmBancoHoras.vb` | **sim** → `Grupo_Mecano\Cadastro\` | Extrato do banco de horas (só leitura). |
+| `preprod\frmApontamentoPeriodo.vb` | **sim** → `Grupo_Mecano\Cadastro\` | "Anotações por período": férias/afastamento no nome de outra pessoa (gestor e diretoria). |
+| `preprod\frmGerenciamentoTime.vb` | **sim** → `Grupo_Mecano\Cadastro\` | "Gerenciamento do Time": as quatro consultas de gestão em abas (Analítica, Sintética, Por funcionário, Por usuário e data), só leitura, com exportação (gestor e diretoria). |
 | `ModApontamentoDemo.vb` | não | Versão da camada de dados que lê e grava em txt, para a demonstração. Mesmos membros públicos do `ModApontamento`. |
 | `DemoMain.vb`, `build-demo.rsp`, `Compilar-Demo.bat` | não | Ponto de entrada e compilação da demo com o `vbc` do .NET 4.8, sem Visual Studio. |
 | `clientes.txt`, `colaboradores.txt`, `outros.txt`, `horasmes.txt` | não | Dados da demo. Empresas e colaboradores **fictícios**; atividades e metas mensais reais. |

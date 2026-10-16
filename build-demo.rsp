@@ -13,11 +13,11 @@
 "..\TO-DO_Entrega-Cadastro-Colaboradores\TemaMecano.vb"
 "..\TO-DO_Entrega-Cadastro-Colaboradores\Colaborador.vb"
 "..\TO-DO_Entrega-Cadastro-Colaboradores\UiMecano.vb"
-Apontamento.vb
+preprod\Apontamento.vb
 ModApontamentoDemo.vb
-frmApontamentos.vb
-frmApontamentoDet.vb
-frmBancoHoras.vb
-frmApontamentoPeriodo.vb
-frmGerenciamentoTime.vb
+preprod\frmApontamentos.vb
+preprod\frmApontamentoDet.vb
+preprod\frmBancoHoras.vb
+preprod\frmApontamentoPeriodo.vb
+preprod\frmGerenciamentoTime.vb
 DemoMain.vb

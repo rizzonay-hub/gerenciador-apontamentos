@@ -2,6 +2,7 @@
 
 ## 16/10/2026 (noite) — menos texto na tela
 
+- Pasta `preprod\` com os sete `.vb` que entram no Gerenciador (os únicos arquivos que sobem); a demonstração e os `.txt` ficam na raiz.
 - Retirados os textos explicativos de todas as telas: subtítulos dos cabeçalhos (Apontamentos, Anotações por período, Gerenciamento), frases de ajuda ("Digite parte do nome…", "Lista do Outros.txt…", "Grava um dia de cada vez…", regra do banco de horas, regra das horas diretas e indiretas, "clique no dia", "clique para ver o extrato", "domingos não entram") e os parênteses das opções ("com código de empresa", "grava uma linha por empresa", "gravado como 1,50 h").
 - O subtítulo do lançamento ficou só com os números: "Hoje: 7h00 · faltam 1h00 · com este: 9h00 (1h00 no banco)".
 - Capturas refeitas.

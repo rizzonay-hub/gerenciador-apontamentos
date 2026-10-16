@@ -16,17 +16,17 @@ Projeto: `Grupo_Mecano` (Visual Basic, .NET Framework 4.8). A cópia de testes d
 
 ## Passo 1 — Arquivos no projeto
 
-Copiar para o projeto de **testes** primeiro (`Grupo_Mecano_Testes\Grupo_Mecano\`):
+A pasta `preprod\` tem só os sete arquivos que entram no Gerenciador, nada da demonstração. Copiar para o projeto de **testes** primeiro (`Grupo_Mecano_Testes\Grupo_Mecano\`):
 
 | De (este repositório) | Para |
 |---|---|
-| `Apontamento.vb` | `Cadastro\Apontamento.vb` |
-| `frmApontamentos.vb` | `Cadastro\frmApontamentos.vb` |
-| `frmApontamentoDet.vb` | `Cadastro\frmApontamentoDet.vb` |
-| `frmBancoHoras.vb` | `Cadastro\frmBancoHoras.vb` |
-| `frmApontamentoPeriodo.vb` | `Cadastro\frmApontamentoPeriodo.vb` |
-| `frmGerenciamentoTime.vb` | `Cadastro\frmGerenciamentoTime.vb` |
-| `ModApontamento.vb` | `App_Code\ModApontamento.vb` |
+| `preprod\Apontamento.vb` | `Cadastro\Apontamento.vb` |
+| `preprod\frmApontamentos.vb` | `Cadastro\frmApontamentos.vb` |
+| `preprod\frmApontamentoDet.vb` | `Cadastro\frmApontamentoDet.vb` |
+| `preprod\frmBancoHoras.vb` | `Cadastro\frmBancoHoras.vb` |
+| `preprod\frmApontamentoPeriodo.vb` | `Cadastro\frmApontamentoPeriodo.vb` |
+| `preprod\frmGerenciamentoTime.vb` | `Cadastro\frmGerenciamentoTime.vb` |
+| `preprod\ModApontamento.vb` | `App_Code\ModApontamento.vb` |
 
 - [ ] Incluir os sete no `Grupo_Mecano.vbproj` (Adicionar › Item existente). São classes criadas por código, **sem Designer e sem .resx**.
 - [ ] **Não** incluir `ModApontamentoDemo.vb`, `DemoMain.vb` nem os `.txt`: são só da demonstração.
