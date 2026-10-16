@@ -18,8 +18,9 @@ Imports System.Windows.Forms
 ''' <summary>Globais da sessão que o Gerenciador fornece (App_Code\Main.vb). Na demo você é uma analista do Fiscal.</summary>
 Public Module GlobaisDemo
     Public Usersys As Integer = 999
-    Public UserName As String = "ANALISTA DE DEMONSTRAÇÃO"
-    Public UserFuncao As String = "ANALISTA FISCAL"
+    ' gestor, para a demo mostrar também "Lançar período" e "Gerenciamento" (um analista não vê esses botões)
+    Public UserName As String = "GESTOR DE DEMONSTRAÇÃO"
+    Public UserFuncao As String = "GESTOR FISCAL"
     Public UserDepto As String = "FISCAL"
     Public UserAdmissao As Date = New Date(2020, 1, 6)
 End Module
@@ -132,6 +133,26 @@ Public Module DemoMain
         Processar(8)
         SalvarCaptura(banco, Path.Combine(pasta, "06-banco-de-horas.png"))
         banco.Close()
+
+        Dim periodo As New frmApontamentoPeriodo()
+        periodo.StartPosition = FormStartPosition.Manual
+        periodo.Location = New Point(0, 0)
+        periodo.Show()
+        Processar(8)
+        periodo.DemonstrarPeriodo()
+        Processar(6)
+        SalvarCaptura(periodo, Path.Combine(pasta, "07-anotacoes-periodo.png"))
+        periodo.Close()
+
+        Dim ger As New frmGerenciamentoTime()
+        ger.StartPosition = FormStartPosition.Manual
+        ger.Location = New Point(0, 0)
+        ger.Show()
+        Processar(8)
+        ger.ConsultarAgora()
+        Processar(10)
+        SalvarCaptura(ger, Path.Combine(pasta, "08-gerenciamento-analitica.png"))
+        ger.Close()
 
         lista.Close()
     End Sub

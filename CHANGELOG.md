@@ -1,5 +1,16 @@
 # Histórico — Apontamentos de horas
 
+## 16/10/2026 (tarde) — hierarquia do menu Time dentro da tela
+
+**Novo**
+- **Lançar período** (`frmApontamentoPeriodo`): o "Anotações Período" de hoje no visual novo. Gestor ou diretoria escolhe a pessoa, o intervalo e o motivo; a janela mostra antes quantos dias e horas vai gravar (8h00 por dia útil, "Sabado" 4h00, domingo nada, como o `frmTimePeriodo`) e pula os dias em que a pessoa já tem apontamento.
+- **Gerenciamento do Time** (`frmGerenciamentoTime`): uma tela com uma aba por consulta de gestão. A **Analítica** está pronta, com as mesmas procedures `Time_GetByEmpresa*` e a mesma escolha entre elas que o `frmTimeConsulta`; Sintética, Por funcionário e Por usuário e data aparecem como "em breve".
+- Dois botões na barra da lista, só para gestor e diretoria: "Lançar período" e "Gerenciamento".
+- `ModApontamento`: `ListarDe`, `Colaboradores` (TbSenha), `ConsultaAnalitica`, `PodeGerenciar`. Demo: `colaboradores.txt` fictício e lançamentos de mais duas pessoas; a pessoa logada na demo passou a ser gestor.
+
+**Mudou**
+- Banco de horas: sábado conta 4h00 de jornada (antes 0), igual à meta mensal e ao "Sabado" do período; só o que passar disso é crédito.
+
 ## 16/10/2026 — pronta para pré-produção
 
 **Novo**

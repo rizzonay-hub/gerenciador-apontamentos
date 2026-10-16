@@ -70,13 +70,18 @@ Public Module ModApontamento
     ' ------------------------------------------------------------ apontamentos
     ''' <summary>Apontamentos do usuário logado entre duas datas (Time_GetByData).</summary>
     Public Function Listar(de As Date, ate As Date) As List(Of Apontamento)
+        Return ListarDe(Usersys, de, ate)
+    End Function
+
+    ''' <summary>Apontamentos de um colaborador entre duas datas (Time_GetByData). Usado pela gestão: período e consultas.</summary>
+    Public Function ListarDe(usuarioId As Integer, de As Date, ate As Date) As List(Of Apontamento)
         Dim lista As New List(Of Apontamento)()
         Using cn As New SqlConnection(ConnString)
             cn.Open()
             Using cmd As New SqlCommand("dbo.Time_GetByData", cn) With {.CommandType = CommandType.StoredProcedure, .CommandTimeout = 60}
                 cmd.Parameters.Add("@data1", SqlDbType.Char, 10).Value = de.ToString("dd/MM/yyyy")
                 cmd.Parameters.Add("@data2", SqlDbType.Char, 10).Value = ate.ToString("dd/MM/yyyy")
-                cmd.Parameters.Add("@usuarioid", SqlDbType.Int).Value = Usersys
+                cmd.Parameters.Add("@usuarioid", SqlDbType.Int).Value = usuarioId
                 Using rd = cmd.ExecuteReader()
                     While rd.Read()
                         lista.Add(Ler(rd))
@@ -209,7 +214,119 @@ Public Module ModApontamento
     Public Sub LimparCache()
         _clientes = Nothing
         _metas = Nothing
+        _colaboradores = Nothing
     End Sub
+
+    ' ------------------------------------------------------------ gestão (gestor e diretoria)
+    ''' <summary>Quem abre "Anotações por período" e "Gerenciamento": gestor e diretoria, a mesma regra do "administrativo".</summary>
+    Public Function PodeGerenciar() As Boolean
+        Return VeAtividadesAdministrativas()
+    End Function
+
+    Private _colaboradores As List(Of ColaboradorResumo) = Nothing
+
+    ''' <summary>Colaboradores da TbSenha (sem o ADMINISTRADOR), em cache: ativos primeiro.</summary>
+    Public Function Colaboradores() As List(Of ColaboradorResumo)
+        If _colaboradores IsNot Nothing Then Return _colaboradores
+        Dim lista As New List(Of ColaboradorResumo)()
+        Using cn As New SqlConnection(ConnString)
+            cn.Open()
+            Using cmd As New SqlCommand("SELECT CODIGOID, RTRIM(ISNULL(USUARIO,'')) AS USUARIO, RTRIM(ISNULL(DEPTO,'')) AS DEPTO, ISNULL(DEMITIDO,0) AS DEMITIDO " &
+                                        "FROM dbo.TbSenha WHERE RTRIM(ISNULL(USUARIO,'')) <> '' AND UPPER(RTRIM(USUARIO)) <> 'ADMINISTRADOR' ORDER BY USUARIO", cn) With {.CommandTimeout = 60}
+                Using rd = cmd.ExecuteReader()
+                    While rd.Read()
+                        lista.Add(New ColaboradorResumo With {
+                            .Id = Convert.ToInt32(rd("CODIGOID")), .Nome = Texto(rd("USUARIO")), .Depto = Texto(rd("DEPTO")),
+                            .Desligado = Convert.ToBoolean(rd("DEMITIDO"))})
+                    End While
+                End Using
+            End Using
+        End Using
+        _colaboradores = lista.OrderBy(Function(c) c.Desligado).ThenBy(Function(c) c.Nome).ToList()
+        Return _colaboradores
+    End Function
+
+    ''' <summary>
+    ''' Consulta Analítica: as mesmas procedures e a mesma escolha entre elas que o frmTimeConsulta faz hoje
+    ''' (Geral → Time_GetByEmpresaGeral; Sem código → SC ou SCTE; Com código → CC ou CCTE; "TE" = todas as empresas).
+    ''' </summary>
+    Public Function ConsultaAnalitica(f As FiltroAnalitica) As List(Of LinhaAnalitica)
+        Dim proc As String
+        Dim parametros As New List(Of KeyValuePair(Of String, Object))()
+        Dim d1 = f.De.ToString("dd/MM/yyyy")
+        Dim d2 = f.Ate.ToString("dd/MM/yyyy")
+        Select Case f.Modo
+            Case ModoAnalitica.Geral
+                proc = "dbo.Time_GetByEmpresaGeral"
+                parametros.Add(New KeyValuePair(Of String, Object)("@data1", d1))
+                parametros.Add(New KeyValuePair(Of String, Object)("@data2", d2))
+                parametros.Add(New KeyValuePair(Of String, Object)("@usuario", f.Usuario))
+                parametros.Add(New KeyValuePair(Of String, Object)("@empresa", f.Empresa))
+            Case ModoAnalitica.SemCodigoEmpresa
+                proc = If(f.TodasEmpresas, "dbo.Time_GetByEmpresaSCTE", "dbo.Time_GetByEmpresaSC")
+                parametros.Add(New KeyValuePair(Of String, Object)("@data1", d1))
+                parametros.Add(New KeyValuePair(Of String, Object)("@data2", d2))
+                parametros.Add(New KeyValuePair(Of String, Object)("@empresa", f.Empresa))
+                parametros.Add(New KeyValuePair(Of String, Object)("@usuario", f.Usuario))
+            Case Else
+                proc = If(f.TodasEmpresas, "dbo.Time_GetByEmpresaCCTE", "dbo.Time_GetByEmpresaCC")
+                parametros.Add(New KeyValuePair(Of String, Object)("@data1", d1))
+                parametros.Add(New KeyValuePair(Of String, Object)("@data2", d2))
+                parametros.Add(New KeyValuePair(Of String, Object)("@usuario", f.Usuario))
+                parametros.Add(New KeyValuePair(Of String, Object)("@empresaid", If(f.TodasEmpresas, "", f.EmpresaId)))
+        End Select
+
+        Dim lista As New List(Of LinhaAnalitica)()
+        Using cn As New SqlConnection(ConnString)
+            cn.Open()
+            Using cmd As New SqlCommand(proc, cn) With {.CommandType = CommandType.StoredProcedure, .CommandTimeout = 120}
+                For Each p In parametros
+                    If p.Key = "@data1" OrElse p.Key = "@data2" Then
+                        cmd.Parameters.Add(p.Key, SqlDbType.Char, 10).Value = p.Value
+                    ElseIf p.Key = "@empresaid" Then
+                        cmd.Parameters.Add(p.Key, SqlDbType.Char, 7).Value = p.Value
+                    Else
+                        cmd.Parameters.Add(p.Key, SqlDbType.NVarChar, 100).Value = p.Value
+                    End If
+                Next
+                Using rd = cmd.ExecuteReader()
+                    Dim colunas = New HashSet(Of String)(StringComparer.OrdinalIgnoreCase)
+                    For i = 0 To rd.FieldCount - 1
+                        colunas.Add(rd.GetName(i))
+                    Next
+                    While rd.Read()
+                        lista.Add(New LinhaAnalitica With {
+                            .Id = Inteiro(rd, colunas, "codigoid"),
+                            .Data = If(colunas.Contains("data") AndAlso rd("data") IsNot DBNull.Value, Convert.ToDateTime(rd("data")).Date, Date.MinValue),
+                            .Empresa = TextoCol(rd, colunas, "empresa"),
+                            .EmpresaId = TextoCol(rd, colunas, "empresaid"),
+                            .Horas = Dec(rd, colunas, "tempo"),
+                            .UsuarioId = Inteiro(rd, colunas, "usuarioid"),
+                            .Usuario = TextoCol(rd, colunas, "usuario"),
+                            .Depto = TextoCol(rd, colunas, "DEPTO"),
+                            .CustoHora = Dec(rd, colunas, "custo_por_hora"),
+                            .Grupo = TextoCol(rd, colunas, "DESCRIGRU")})
+                    End While
+                End Using
+            End Using
+        End Using
+        Return lista.OrderByDescending(Function(l) l.Data).ThenBy(Function(l) l.Usuario).ThenBy(Function(l) l.Empresa).ToList()
+    End Function
+
+    Private Function TextoCol(rd As IDataRecord, colunas As HashSet(Of String), nome As String) As String
+        If Not colunas.Contains(nome) Then Return ""
+        Return Texto(rd(nome))
+    End Function
+
+    Private Function Inteiro(rd As IDataRecord, colunas As HashSet(Of String), nome As String) As Integer
+        If Not colunas.Contains(nome) OrElse rd(nome) Is DBNull.Value Then Return 0
+        Return Convert.ToInt32(rd(nome))
+    End Function
+
+    Private Function Dec(rd As IDataRecord, colunas As HashSet(Of String), nome As String) As Decimal
+        If Not colunas.Contains(nome) OrElse rd(nome) Is DBNull.Value Then Return 0D
+        Return Convert.ToDecimal(rd(nome))
+    End Function
 
     ''' <summary>Atividades internas do Outros.txt; sem "administrativo" para quem não é gestor/diretoria.</summary>
     Public Function AtividadesInternas() As List(Of String)

@@ -18,4 +18,6 @@ ModApontamentoDemo.vb
 frmApontamentos.vb
 frmApontamentoDet.vb
 frmBancoHoras.vb
+frmApontamentoPeriodo.vb
+frmGerenciamentoTime.vb
 DemoMain.vb

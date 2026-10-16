@@ -314,8 +314,12 @@ Public Class BancoHoras
             ToList()
     End Function
 
+    ''' <summary>Jornada padrão. Sábado conta 4 h: é o que a meta da TbHorasMes e o "Anotações por período" usam ("Sabado", 4 h). Domingo 0.</summary>
+    Public Const JORNADA_SABADO As Decimal = 4D
+
     Public Shared Function JornadaDoDia(d As Date) As Decimal
-        If d.DayOfWeek = DayOfWeek.Saturday OrElse d.DayOfWeek = DayOfWeek.Sunday Then Return 0D
+        If d.DayOfWeek = DayOfWeek.Sunday Then Return 0D
+        If d.DayOfWeek = DayOfWeek.Saturday Then Return JORNADA_SABADO
         Return ResumoHoras.JORNADA
     End Function
 
@@ -341,6 +345,154 @@ Public Class BancoHoras
             ToList()
         Return b
     End Function
+End Class
+
+' ============================================================================
+'  Gestão do Time (menu Apontamentos › Time › Anotações Período e › Gerenciamento)
+' ============================================================================
+
+''' <summary>Colaborador como as telas de gestão precisam (TbSenha): código, nome, departamento.</summary>
+Public Class ColaboradorResumo
+    Public Property Id As Integer
+    Public Property Nome As String = ""
+    Public Property Depto As String = ""
+    Public Property Desligado As Boolean
+
+    Public ReadOnly Property Rotulo As String
+        Get
+            Return Nome & If(Desligado, "   (desligado)", "")
+        End Get
+    End Property
+
+    Public Overrides Function ToString() As String
+        Return Rotulo
+    End Function
+End Class
+
+''' <summary>Um dia que o "Anotações por período" vai gravar (ou pular).</summary>
+Public Class DiaPeriodo
+    Public Property Data As Date
+    ''' <summary>Texto gravado em TbTime.EMPRESA: o motivo, ou "Sabado".</summary>
+    Public Property Texto As String = ""
+    Public Property Horas As Decimal
+    ''' <summary>Horas que a pessoa já tem nesse dia. Com qualquer coisa já lançada, o dia é pulado.</summary>
+    Public Property JaTem As Decimal
+
+    Public ReadOnly Property Pular As Boolean
+        Get
+            Return JaTem > 0D
+        End Get
+    End Property
+End Class
+
+''' <summary>
+''' Regra do frmTimePeriodo de hoje, num lugar só: para cada dia do intervalo, domingo não
+''' grava; sábado grava "Sabado" com 4 h; dia útil grava o motivo com 8 h. Tudo em nome do
+''' colaborador escolhido, com EMPRESAID vazio (atividade interna), via Time_Insert.
+''' Novidade: dias em que a pessoa já tem apontamento são pulados (hoje duplicava).
+''' </summary>
+Public Class PeriodoAfastamento
+    ''' <summary>Textos exatamente como o Time grava hoje; relatórios podem filtrar por eles.</summary>
+    Public Shared ReadOnly Motivos As String() = {"Ferias / Afastamento", "Licenca maternidade"}
+    Public Const TEXTO_SABADO As String = "Sabado"
+
+    Public Shared Function Montar(de As Date, ate As Date, motivo As String, jaApontado As Func(Of Date, Decimal)) As List(Of DiaPeriodo)
+        Dim lista As New List(Of DiaPeriodo)()
+        Dim d = de.Date
+        While d <= ate.Date
+            If d.DayOfWeek <> DayOfWeek.Sunday Then
+                Dim item As New DiaPeriodo With {.Data = d}
+                If d.DayOfWeek = DayOfWeek.Saturday Then
+                    item.Texto = TEXTO_SABADO
+                    item.Horas = BancoHoras.JORNADA_SABADO
+                Else
+                    item.Texto = motivo
+                    item.Horas = ResumoHoras.JORNADA
+                End If
+                item.JaTem = If(jaApontado Is Nothing, 0D, jaApontado(d))
+                lista.Add(item)
+            End If
+            d = d.AddDays(1)
+        End While
+        Return lista
+    End Function
+
+    ''' <summary>"15 dias úteis × 8h00 e 2 sábados × 4h00 = 128h00".</summary>
+    Public Shared Function Descrever(dias As IEnumerable(Of DiaPeriodo)) As String
+        Dim gravar = dias.Where(Function(x) Not x.Pular).ToList()
+        If gravar.Count = 0 Then Return "Nenhum dia para gravar."
+        Dim uteis = gravar.Where(Function(x) x.Data.DayOfWeek <> DayOfWeek.Saturday).Count()
+        Dim sabados = gravar.Count - uteis
+        Dim partes As New List(Of String)()
+        If uteis > 0 Then partes.Add(uteis & If(uteis = 1, " dia útil × ", " dias úteis × ") & Apontamento.FormatarHoras(ResumoHoras.JORNADA))
+        If sabados > 0 Then partes.Add(sabados & If(sabados = 1, " sábado × ", " sábados × ") & Apontamento.FormatarHoras(BancoHoras.JORNADA_SABADO))
+        Return String.Join(" e ", partes) & " = " & Apontamento.FormatarHoras(gravar.Sum(Function(x) x.Horas))
+    End Function
+End Class
+
+''' <summary>Modos da Consulta Analítica, como os três botões de opção da tela de hoje.</summary>
+Public Enum ModoAnalitica
+    ''' <summary>Só linhas com código de empresa (clientes): Time_GetByEmpresaCC / CCTE.</summary>
+    ComCodigoEmpresa = 0
+    ''' <summary>Só linhas sem código (atividades internas, "Outros"): Time_GetByEmpresaSC / SCTE.</summary>
+    SemCodigoEmpresa = 1
+    ''' <summary>Tudo: Time_GetByEmpresaGeral.</summary>
+    Geral = 2
+End Enum
+
+''' <summary>Filtro da Consulta Analítica. Usuário e empresa viajam como NOME, que é o que as procedures esperam.</summary>
+Public Class FiltroAnalitica
+    Public Const TODOS_USUARIOS As String = "TODOS OS USUARIOS"
+    Public Const TODAS_EMPRESAS As String = "TODAS AS EMPRESAS"
+
+    Public Property De As Date = New Date(Date.Today.Year, Date.Today.Month, 1)
+    Public Property Ate As Date = Date.Today
+    ''' <summary>TbSenha.USUARIO ou TODOS_USUARIOS.</summary>
+    Public Property Usuario As String = TODOS_USUARIOS
+    Public Property Modo As ModoAnalitica = ModoAnalitica.Geral
+    ''' <summary>TbClientes.NOME ou TODAS_EMPRESAS.</summary>
+    Public Property Empresa As String = TODAS_EMPRESAS
+    ''' <summary>TRADUTOR da empresa escolhida (modo Com código); vazio para todas.</summary>
+    Public Property EmpresaId As String = ""
+
+    Public ReadOnly Property TodosUsuarios As Boolean
+        Get
+            Return Usuario = TODOS_USUARIOS
+        End Get
+    End Property
+
+    Public ReadOnly Property TodasEmpresas As Boolean
+        Get
+            Return Empresa = TODAS_EMPRESAS
+        End Get
+    End Property
+End Class
+
+''' <summary>Uma linha da Consulta Analítica (Time_GetByEmpresa*): o apontamento mais quem fez e de que departamento.</summary>
+Public Class LinhaAnalitica
+    Public Property Id As Integer
+    Public Property Data As Date
+    Public Property Empresa As String = ""
+    Public Property EmpresaId As String = ""
+    Public Property Horas As Decimal
+    Public Property UsuarioId As Integer
+    Public Property Usuario As String = ""
+    Public Property Depto As String = ""
+    ''' <summary>custo_por_hora da procedure. A tela de hoje não o exibe (o "TOTAL DO CUSTO" dela é sempre 0); fica aqui para o futuro.</summary>
+    Public Property CustoHora As Decimal
+    Public Property Grupo As String = ""
+
+    Public ReadOnly Property EhCliente As Boolean
+        Get
+            Return If(EmpresaId, "").Trim() <> ""
+        End Get
+    End Property
+
+    Public ReadOnly Property HorasTexto As String
+        Get
+            Return Apontamento.FormatarHoras(Horas)
+        End Get
+    End Property
 End Class
 
 ''' <summary>Período da lista principal.</summary>

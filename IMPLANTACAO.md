@@ -24,16 +24,20 @@ Copiar para o projeto de **testes** primeiro (`Grupo_Mecano_Testes\Grupo_Mecano\
 | `frmApontamentos.vb` | `Cadastro\frmApontamentos.vb` |
 | `frmApontamentoDet.vb` | `Cadastro\frmApontamentoDet.vb` |
 | `frmBancoHoras.vb` | `Cadastro\frmBancoHoras.vb` |
+| `frmApontamentoPeriodo.vb` | `Cadastro\frmApontamentoPeriodo.vb` |
+| `frmGerenciamentoTime.vb` | `Cadastro\frmGerenciamentoTime.vb` |
 | `ModApontamento.vb` | `App_Code\ModApontamento.vb` |
 
-- [ ] Incluir os cinco no `Grupo_Mecano.vbproj` (Adicionar › Item existente). São classes criadas por código, **sem Designer e sem .resx**.
+- [ ] Incluir os sete no `Grupo_Mecano.vbproj` (Adicionar › Item existente). São classes criadas por código, **sem Designer e sem .resx**.
 - [ ] **Não** incluir `ModApontamentoDemo.vb`, `DemoMain.vb` nem os `.txt`: são só da demonstração.
 
 ## Passo 2 — Menu (`Base\frmMain.vb`)
 
 - [ ] Em **Apontamentos › Time › Anotações**, trocar `New frmTimeDet(0)…Show()` por `frmApontamentos.Abrir()`.
 - [ ] Em **Apontamentos › Time › Consulta** (`frmTime`): apontar para `frmApontamentos.Abrir()` também, ou retirar do menu (decisão em aberto; em pré-produção, apontar para a tela nova).
-- [ ] Deixar `frmTimeDet` e `frmTime` no projeto. São o caminho de volta.
+- [ ] Em **Apontamentos › Time › Anotações Período**, trocar `AbrirFormulario(Of frmTimePeriodo)()` por abrir `New frmApontamentoPeriodo()` com `ShowDialog()`.
+- [ ] Em **Apontamentos › Time › Gerenciamento › Consulta Analítica**, trocar `AbrirFormulario(Of frmTimeConsulta)()` por `frmGerenciamentoTime.Abrir()`. Sintética, Geral e Acumulada por Usuário e Data continuam abrindo as telas antigas até as abas ficarem prontas.
+- [ ] Deixar `frmTimeDet`, `frmTime`, `frmTimePeriodo` e `frmTimeConsulta` no projeto. São o caminho de volta.
 - [ ] Na tela principal nova (quando subir), o item "Apontamentos" da barra lateral e o atalho "Horas" chamam `frmApontamentos` com `Embutir()`.
 
 ## Passo 3 — Compilar
@@ -72,6 +76,13 @@ Fazer com um **usuário comum** (não gestor) e depois com um **gestor**. Em cad
 - [ ] Clicar abre o extrato; dias, jornada e "para o banco" batem com a TbTime. Exportar funciona.
 - [ ] Excluir uma linha que gerou crédito: ao reabrir a tela, o saldo cai sozinho.
 - [ ] Lançar 4 h num sábado: entra inteiro no banco.
+
+**Gestão (com um gestor; com um analista os dois botões não aparecem)**
+- [ ] "Lançar período": escolher outra pessoa, duas semanas, Férias / Afastamento. A janela diz "10 dias úteis × 8h00 e 2 sábados × 4h00 = 88h00". Gravar e conferir na TbTime: 12 linhas no USUARIOID dela, EMPRESA = "Ferias / Afastamento" e "Sabado", EMPRESAID vazio, TEMPO 8,00 e 4,00.
+- [ ] Repetir o mesmo período: a janela avisa que os dias já têm apontamento e não grava nada.
+- [ ] "Gerenciamento", aba Analítica: mesmo período e filtros na tela antiga (Consulta Analítica) e na nova; a contagem de linhas e o total de horas têm de ser iguais nos três modos (Tudo / só clientes / só atividades internas), com "Todos" e com um colaborador escolhido, com "Todas as empresas" e com uma empresa.
+- [ ] Clicar nas abas "em breve": só uma mensagem na barra de status, nada abre.
+- [ ] Exportar da Analítica abre no Excel com acentos corretos e a linha de total.
 
 **Trava de horas do menu principal**
 - [ ] Com um dia pendente (menos de 8 h) nos últimos 20 dias úteis, o menu principal fica travado como hoje; o cartão MENOS DE 8 H mostra o dia.

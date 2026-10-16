@@ -73,8 +73,66 @@ Public Module ModApontamento
 
     ' ------------------------------------------------------------ apontamentos
     Public Function Listar(de As Date, ate As Date) As List(Of Apontamento)
+        Return ListarDe(Usersys, de, ate)
+    End Function
+
+    Public Function ListarDe(usuarioId As Integer, de As Date, ate As Date) As List(Of Apontamento)
         Carregar()
-        Return _cache.Where(Function(a) a.Data.Date >= de.Date AndAlso a.Data.Date <= ate.Date).Select(Function(a) a.Clonar()).ToList()
+        Return _cache.Where(Function(a) a.UsuarioId = usuarioId AndAlso a.Data.Date >= de.Date AndAlso a.Data.Date <= ate.Date).Select(Function(a) a.Clonar()).ToList()
+    End Function
+
+    ' ------------------------------------------------------------ gestão (gestor e diretoria)
+    Public Function PodeGerenciar() As Boolean
+        Return VeAtividadesAdministrativas()
+    End Function
+
+    Private _colaboradores As List(Of ColaboradorResumo) = Nothing
+    Private ReadOnly _arqColaboradores As String = Path.Combine(PastaDados(), "colaboradores.txt")
+
+    ''' <summary>Colaboradores FICTÍCIOS do colaboradores.txt desta pasta (id|nome|depto|funcao|desligado).</summary>
+    Public Function Colaboradores() As List(Of ColaboradorResumo)
+        If _colaboradores IsNot Nothing Then Return _colaboradores
+        Dim lista As New List(Of ColaboradorResumo)()
+        If File.Exists(_arqColaboradores) Then
+            For Each linha In File.ReadAllLines(_arqColaboradores, Encoding.UTF8)
+                If linha.Trim() = "" OrElse linha.StartsWith("#") Then Continue For
+                Dim p = linha.Split("|"c)
+                If p.Length < 3 Then Continue For
+                Dim id As Integer
+                If Not Integer.TryParse(p(0), id) Then Continue For
+                lista.Add(New ColaboradorResumo With {.Id = id, .Nome = p(1).Trim(), .Depto = p(2).Trim(), .Desligado = (p.Length >= 5 AndAlso p(4).Trim() = "1")})
+            Next
+        End If
+        If Not lista.Any(Function(c) c.Id = Usersys) Then lista.Insert(0, New ColaboradorResumo With {.Id = Usersys, .Nome = UsuarioLogadoNome(), .Depto = "FISCAL"})
+        _colaboradores = lista.OrderBy(Function(c) c.Desligado).ThenBy(Function(c) c.Nome).ToList()
+        Return _colaboradores
+    End Function
+
+    ''' <summary>Mesma seleção que as procedures Time_GetByEmpresa* fazem, sobre o txt.</summary>
+    Public Function ConsultaAnalitica(f As FiltroAnalitica) As List(Of LinhaAnalitica)
+        Carregar()
+        Dim pessoas = Colaboradores()
+        Dim usuarioId As Integer = -1
+        If Not f.TodosUsuarios Then
+            Dim c = pessoas.FirstOrDefault(Function(x) x.Nome = f.Usuario)
+            usuarioId = If(c Is Nothing, 0, c.Id)
+        End If
+        Dim itens = _cache.Where(Function(a) a.Data.Date >= f.De.Date AndAlso a.Data.Date <= f.Ate.Date AndAlso (usuarioId = -1 OrElse a.UsuarioId = usuarioId))
+        Select Case f.Modo
+            Case ModoAnalitica.ComCodigoEmpresa
+                itens = itens.Where(Function(a) a.EhCliente AndAlso (f.TodasEmpresas OrElse a.EmpresaId.TrimStart("0"c) = f.EmpresaId.TrimStart("0"c)))
+            Case ModoAnalitica.SemCodigoEmpresa
+                itens = itens.Where(Function(a) Not a.EhCliente AndAlso (f.TodasEmpresas OrElse a.Empresa = f.Empresa))
+            Case Else
+                itens = itens.Where(Function(a) f.TodasEmpresas OrElse a.Empresa = f.Empresa)
+        End Select
+        Return itens.Select(Function(a)
+                                Dim c = pessoas.FirstOrDefault(Function(x) x.Id = a.UsuarioId)
+                                Return New LinhaAnalitica With {
+                                    .Id = a.Id, .Data = a.Data, .Empresa = a.Empresa, .EmpresaId = a.EmpresaId, .Horas = a.Horas,
+                                    .UsuarioId = a.UsuarioId, .Usuario = If(c Is Nothing, "usuário " & a.UsuarioId, c.Nome), .Depto = If(c Is Nothing, "", c.Depto)}
+                            End Function).
+            OrderByDescending(Function(l) l.Data).ThenBy(Function(l) l.Usuario).ThenBy(Function(l) l.Empresa).ToList()
     End Function
 
     Public Function ListarDesde(de As Date) As List(Of Apontamento)
@@ -207,17 +265,19 @@ Public Module ModApontamento
             If Not Integer.TryParse(p(0), id) Then Continue For
             If Not Date.TryParseExact(p(1), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, d) Then Continue For
             Decimal.TryParse(p(4), NumberStyles.Any, CultureInfo.InvariantCulture, h)
-            _cache.Add(New Apontamento With {.Id = id, .Data = d, .Empresa = p(2), .EmpresaId = p(3), .Horas = h, .UsuarioId = Usersys})
+            Dim uid = Usersys                       ' arquivos antigos (sem a coluna) são da pessoa logada
+            If p.Length >= 6 Then Integer.TryParse(p(5), uid)
+            _cache.Add(New Apontamento With {.Id = id, .Data = d, .Empresa = p(2), .EmpresaId = p(3), .Horas = h, .UsuarioId = uid})
         Next
     End Sub
 
     Private Sub Salvar()
         Dim sb As New StringBuilder()
-        sb.AppendLine("ID|DATA|EMPRESA|EMPRESAID|HORAS")
+        sb.AppendLine("ID|DATA|EMPRESA|EMPRESAID|HORAS|USUARIOID")
         For Each a In _cache.OrderBy(Function(x) x.Data).ThenBy(Function(x) x.Id)
             sb.AppendLine(String.Join("|", New String() {
                 a.Id.ToString(), a.Data.ToString("yyyy-MM-dd"), a.Empresa.Replace("|", " "), a.EmpresaId,
-                a.Horas.ToString("0.00", CultureInfo.InvariantCulture)}))
+                a.Horas.ToString("0.00", CultureInfo.InvariantCulture), a.UsuarioId.ToString()}))
         Next
         File.WriteAllText(_arqApontamentos, sb.ToString(), New UTF8Encoding(False))
     End Sub
@@ -264,34 +324,7 @@ Public Module ModApontamento
                 If d = pendenteVazio Then alvoMin = 0
                 If d = extraMeio Then alvoMin = 570
                 If d = extraTeto Then alvoMin = 600
-                Dim restante = alvoMin
-                Dim linhas = 0
-                While restante > 0
-                    Dim minutos As Integer
-                    If restante <= 60 Then
-                        minutos = restante
-                    Else
-                        Dim opcoes = {30, 60, 60, 90, 120, 120, 180, 240}
-                        minutos = Math.Min(restante, opcoes(rnd.Next(opcoes.Length)))
-                    End If
-                    Dim a As New Apontamento With {.Id = proximoId, .Data = d, .Horas = Apontamento.DeMinutos(minutos), .UsuarioId = Usersys}
-                    If internasComuns.Count > 0 AndAlso rnd.Next(100) < 12 Then
-                        a.Empresa = internasComuns(rnd.Next(internasComuns.Count))
-                        a.EmpresaId = ""
-                    Else
-                        Dim c = If(rnd.Next(100) < 75, preferidos(rnd.Next(preferidos.Count)), ativos(rnd.Next(ativos.Count)))
-                        a.Empresa = c.Nome
-                        a.EmpresaId = c.Tradutor
-                    End If
-                    _cache.Add(a)
-                    proximoId += 1
-                    restante -= minutos
-                    linhas += 1
-                    If linhas >= 6 AndAlso restante > 0 Then
-                        _cache.Last().Horas += Apontamento.DeMinutos(restante)
-                        restante = 0
-                    End If
-                End While
+                GerarDia(Usersys, d, alvoMin, rnd, preferidos, ativos, internasComuns, proximoId)
             End If
             d = d.AddDays(1)
         End While
@@ -299,7 +332,7 @@ Public Module ModApontamento
         ' Mês anterior: completa a meta com sábados de 4 h ("Sabado", como o Time grava) e, se sobrar, no último dia útil.
         Dim mesAnterior = New Date(hoje.Year, hoje.Month, 1).AddMonths(-1)
         Dim meta = MetaMes(Apontamento.Competencia(mesAnterior))
-        Dim apontado = _cache.Where(Function(a) a.Data.Year = mesAnterior.Year AndAlso a.Data.Month = mesAnterior.Month).Sum(Function(a) a.Horas)
+        Dim apontado = _cache.Where(Function(a) a.UsuarioId = Usersys AndAlso a.Data.Year = mesAnterior.Year AndAlso a.Data.Month = mesAnterior.Month).Sum(Function(a) a.Horas)
         Dim falta = meta - apontado
         Dim sab = mesAnterior
         While falta >= 4D AndAlso sab.Month = mesAnterior.Month
@@ -311,10 +344,57 @@ Public Module ModApontamento
             sab = sab.AddDays(1)
         End While
         If falta > 0D Then
-            Dim ultimo = _cache.Where(Function(a) a.Data.Year = mesAnterior.Year AndAlso a.Data.Month = mesAnterior.Month AndAlso a.EhCliente).
+            Dim ultimo = _cache.Where(Function(a) a.UsuarioId = Usersys AndAlso a.Data.Year = mesAnterior.Year AndAlso a.Data.Month = mesAnterior.Month AndAlso a.EhCliente).
                 OrderByDescending(Function(a) a.Data).FirstOrDefault()
             If ultimo IsNot Nothing Then ultimo.Horas += falta
         End If
+
+        ' Mais duas pessoas (colaboradores.txt, fictícias), mês anterior e atual, 8 h por dia útil:
+        ' dão conteúdo ao Gerenciamento (consulta de toda a equipe) sem mexer nos cartões da pessoa logada.
+        For Each outro In Colaboradores().Where(Function(c) c.Id <> Usersys AndAlso Not c.Desligado).Take(2).ToList()
+            Dim carteira = ativos.Skip(14 + 10 * (outro.Id Mod 7)).Take(12).ToList()
+            If carteira.Count = 0 Then carteira = preferidos
+            Dim d2 = mesAnterior
+            While d2 <= hoje
+                If d2.DayOfWeek <> DayOfWeek.Saturday AndAlso d2.DayOfWeek <> DayOfWeek.Sunday Then
+                    GerarDia(outro.Id, d2, If(d2 = hoje, 240, 480), rnd, carteira, ativos, internasComuns, proximoId)
+                End If
+                d2 = d2.AddDays(1)
+            End While
+        Next
+    End Sub
+
+    ''' <summary>Um dia de uma pessoa: linhas de 30 min a 4 h até fechar o alvo, 12 % em atividades internas, o resto em clientes (75 % da carteira).</summary>
+    Private Sub GerarDia(usuarioId As Integer, d As Date, alvoMin As Integer, rnd As Random, preferidos As List(Of ClienteResumo),
+                         ativos As List(Of ClienteResumo), internasComuns As List(Of String), ByRef proximoId As Integer)
+        Dim restante = alvoMin
+        Dim linhas = 0
+        While restante > 0
+            Dim minutos As Integer
+            If restante <= 60 Then
+                minutos = restante
+            Else
+                Dim opcoes = {30, 60, 60, 90, 120, 120, 180, 240}
+                minutos = Math.Min(restante, opcoes(rnd.Next(opcoes.Length)))
+            End If
+            Dim a As New Apontamento With {.Id = proximoId, .Data = d, .Horas = Apontamento.DeMinutos(minutos), .UsuarioId = usuarioId}
+            If internasComuns.Count > 0 AndAlso rnd.Next(100) < 12 Then
+                a.Empresa = internasComuns(rnd.Next(internasComuns.Count))
+                a.EmpresaId = ""
+            Else
+                Dim c = If(rnd.Next(100) < 75, preferidos(rnd.Next(preferidos.Count)), ativos(rnd.Next(ativos.Count)))
+                a.Empresa = c.Nome
+                a.EmpresaId = c.Tradutor
+            End If
+            _cache.Add(a)
+            proximoId += 1
+            restante -= minutos
+            linhas += 1
+            If linhas >= 6 AndAlso restante > 0 Then
+                _cache.Last().Horas += Apontamento.DeMinutos(restante)
+                restante = 0
+            End If
+        End While
     End Sub
 
     Private Function DiaUtilAntes(hoje As Date, diasUteis As Integer) As Date

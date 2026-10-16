@@ -51,9 +51,22 @@ As duas frases mostram os números reais assim que você informa o tempo e as em
 ![Banco de horas](capturas/06-banco-de-horas.png)
 
 - O que você já tem no dia **mais** o que vai gravar não pode passar de **10h00**. Se passar, a tela explica: *"Você já tem 9h00 hoje. O limite é 10h00 por dia, então cabem mais 1h00."*
-- O que passar de **8h00** num dia útil é crédito no **banco de horas**. Sábado e domingo entram inteiros.
+- O que passar da jornada do dia é crédito no **banco de horas**: **8h00** em dia útil, **4h00** no sábado (a mesma conta da meta mensal e do "Sabado" que o período grava), tudo no domingo.
 - O cartão BANCO DE HORAS mostra o saldo. Clicando nele abre o extrato: saldo, um chip por mês, a lista dos dias (data, apontado, jornada, quanto foi para o banco) e Exportar.
 - A conta começa em **01/10/2026**; apontamentos anteriores não entram.
+
+### Para gestor e diretoria: o resto do menu Time
+
+A hierarquia do menu **Apontamentos › Time** de hoje é reproduzida dentro da própria tela. Quem é gestor ou diretoria vê dois botões a mais na barra de cima:
+
+| Item do menu de hoje | Onde fica agora |
+|---|---|
+| Anotações | O botão **Novo apontamento**. |
+| Consulta | A própria lista, com período e busca. |
+| Anotações Período | Botão **Lançar período** ([07-anotacoes-periodo.png](capturas/07-anotacoes-periodo.png)): escolha a pessoa, o intervalo e o motivo (Férias / Afastamento ou Licença maternidade). A janela mostra antes quantos dias e horas vai gravar, com a regra de hoje: 8h00 por dia útil, "Sabado" com 4h00, nada no domingo. Dias em que a pessoa já tem apontamento são pulados (a tela antiga duplicava). |
+| Gerenciamento › Consulta Analítica | Botão **Gerenciamento** ([08-gerenciamento-analitica.png](capturas/08-gerenciamento-analitica.png)): uma tela com uma aba por consulta. A **Analítica** está pronta: período, colaborador, empresa e "Mostrar" (tudo, só clientes, só atividades internas), lista com total e Exportar. Usa as mesmas procedures da tela antiga, então os números batem. |
+| Gerenciamento › Sintética, Geral, Acumulada por Usuário e Data | Abas marcadas "em breve" na mesma tela; até lá, continuam no menu antigo. |
+| Gerenciamento › Controle do Ponto | Fora desta entrega, como combinado. |
 
 ### O que continua igual
 
@@ -75,9 +88,11 @@ As duas frases mostram os números reais assim que você informa o tempo e as em
 | `frmApontamentos.vb` | **sim** → `Grupo_Mecano\Cadastro\` | Tela principal (lista, cartões, período, busca, exportar). Tem `Abrir()` e `Embutir()`. |
 | `frmApontamentoDet.vb` | **sim** → `Grupo_Mecano\Cadastro\` | Lançamento novo / alterar; várias empresas (mesmo tempo ou rateio); trava de 10 h. |
 | `frmBancoHoras.vb` | **sim** → `Grupo_Mecano\Cadastro\` | Extrato do banco de horas (só leitura). |
+| `frmApontamentoPeriodo.vb` | **sim** → `Grupo_Mecano\Cadastro\` | "Anotações por período": férias/afastamento no nome de outra pessoa (gestor e diretoria). |
+| `frmGerenciamentoTime.vb` | **sim** → `Grupo_Mecano\Cadastro\` | "Gerenciamento do Time": consultas de gestão em abas; a Analítica pronta, as outras três "em breve" (gestor e diretoria). |
 | `ModApontamentoDemo.vb` | não | Versão da camada de dados que lê e grava em txt, para a demonstração. Mesmos membros públicos do `ModApontamento`. |
 | `DemoMain.vb`, `build-demo.rsp`, `Compilar-Demo.bat` | não | Ponto de entrada e compilação da demo com o `vbc` do .NET 4.8, sem Visual Studio. |
-| `clientes.txt`, `outros.txt`, `horasmes.txt` | não | Dados da demo. Empresas **fictícias**; atividades e metas mensais reais. |
+| `clientes.txt`, `colaboradores.txt`, `outros.txt`, `horasmes.txt` | não | Dados da demo. Empresas e colaboradores **fictícios**; atividades e metas mensais reais. |
 | `apontamentos.txt` | não (fora do Git) | Lançamentos da demo, gerados na primeira abertura em volta da data de hoje. Apague para recomeçar. |
 | `capturas\*.png` | não | Telas em 150 % de DPI, geradas por `GM-Apontamentos-Demo.exe /captura <pasta>`. |
 | `LEIA-ME.md` | não | Documentação técnica detalhada: regras, decisões, o que saiu, o que falta decidir. |
@@ -101,6 +116,8 @@ Sem interface, contra a camada de dados da demo (resultados em [LEIA-ME.md](LEIA
 - Gravação: 2 h divididas em 4 empresas gravam quatro linhas de 0,50 h; 1 h 30 "para cada" em 3 empresas grava três de 1,50 h.
 - Trava: 10h00 + 1h00 recusado; 8h00 + 1h00 gravado com aviso do banco; 9h00 + 3h00 recusado; 9h00 + 1h00 fecha em 10h00; alterar uma linha de 1h00 para 2h00 num dia de 10h00 recusado.
 - Banco: saldo recalculado bate com os dias do extrato.
+- Período: duas semanas viram 12 dias (10 úteis de 8h00 e 2 sábados de 4h00, 88h00), domingos fora; a janela grava em nome da outra pessoa, pula os dias que ela já tinha e a lista da pessoa logada não mostra essas linhas.
+- Analítica: "só clientes" + "só atividades internas" = "tudo"; filtro por colaborador devolve só as linhas dela; filtro por empresa devolve só o código escolhido.
 
 O que **não** foi testado ainda: a compilação dentro do projeto `Grupo_Mecano` no Visual Studio e o uso com o banco SQL real. É o que a pré-produção vai cobrir.
 
@@ -109,7 +126,9 @@ O que **não** foi testado ainda: a compilação dentro do projeto `Grupo_Mecano
 ## 3. Decisões em aberto (para a diretoria)
 
 - **Início da conta do banco de horas**: hoje 01/10/2026 (`BancoHoras.INICIO_VIGENCIA`).
-- **Sábado e domingo** entram inteiros no banco? (hoje sim)
+- **Sábado** conta 4h00 de jornada no banco (o que passar disso é crédito) e domingo entra inteiro. Confirmar.
+- **Quem vê o Gerenciamento e lança período**: a entrega restringe a gestor e diretoria. Hoje o menu libera as consultas (que trazem custo por hora) e o "Anotações Período" para analistas, assistentes e administrativo.
+- **Motivos do período**: ficaram só os dois textos de hoje ("Ferias / Afastamento", "Licenca maternidade"), para não criar uma categoria que os relatórios não conhecem. Acrescentar "Atestado"?
 - O crédito do banco deve **alimentar o "Banco de Horas (Saldos)"** do RH (menu Controle do Ponto) no fechamento do mês? Hoje não grava lá.
 - **Padrão de "várias empresas"**: hoje abre em "cada empresa fica com o tempo inteiro". Trocar para "dividir" é uma linha.
 - **Retrabalho** pode sair de vez? (está oculto no Designer desde 2022 e sem lançamento desde 2025)

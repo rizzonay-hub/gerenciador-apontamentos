@@ -74,6 +74,8 @@ Public Class frmApontamentos
     Private btnNovo As BotaoMecano
     Private btnExportar As BotaoMecano
     Private btnExcluir As BotaoMecano
+    Private btnPeriodo As BotaoMecano          ' gestão: "Anotações por período" (só gestor e diretoria)
+    Private btnGerenciamento As BotaoMecano    ' gestão: as consultas do menu Gerenciamento
     Private pnlResumo As PainelResumoHoras
     Private grade As DataGridView
     Private lblVazio As Label
@@ -226,7 +228,21 @@ Public Class frmApontamentos
         btnExcluir.Enabled = False
         AddHandler btnExcluir.Click, Sub() Excluir()
 
-        pnlToolbar.Controls.AddRange(New Control() {cboPeriodo, dtpDe, lblAte, dtpAte, txtBusca, btnExcluir, btnExportar, btnNovo})
+        ' gestão (só gestor e diretoria): os outros itens do menu Apontamentos › Time, agora dentro da própria tela
+        Dim gestor = ModApontamento.PodeGerenciar()
+        btnPeriodo = BotaoMecano.Secundario("Lançar período", Esc(130), altura)
+        btnPeriodo.Anchor = AnchorStyles.Top Or AnchorStyles.Right
+        btnPeriodo.Top = y
+        btnPeriodo.Visible = gestor
+        AddHandler btnPeriodo.Click, Sub() LancarPeriodo()
+
+        btnGerenciamento = BotaoMecano.Secundario("Gerenciamento", Esc(136), altura)
+        btnGerenciamento.Anchor = AnchorStyles.Top Or AnchorStyles.Right
+        btnGerenciamento.Top = y
+        btnGerenciamento.Visible = gestor
+        AddHandler btnGerenciamento.Click, Sub() frmGerenciamentoTime.Abrir()
+
+        pnlToolbar.Controls.AddRange(New Control() {cboPeriodo, dtpDe, lblAte, dtpAte, txtBusca, btnGerenciamento, btnPeriodo, btnExcluir, btnExportar, btnNovo})
         AddHandler pnlToolbar.Resize, Sub() PosicionarAcoes()
         PosicionarFiltros()
         PosicionarAcoes()
@@ -250,14 +266,32 @@ Public Class frmApontamentos
         Dim y = Esc(14)
         ' janela estreita (embutida na tela principal, DPI alto): as ações descem para uma segunda linha
         Dim larguraAcoes = btnNovo.Width + Esc(8) + btnExportar.Width + Esc(8) + btnExcluir.Width
+        If btnPeriodo.Visible Then larguraAcoes += Esc(8) + btnPeriodo.Width
+        If btnGerenciamento.Visible Then larguraAcoes += Esc(8) + btnGerenciamento.Width
         Dim segundaLinha = (direita - larguraAcoes) < txtBusca.Right + Esc(16)
         Dim topo = If(segundaLinha, y + Esc(44), y)
         Dim altura = If(segundaLinha, Esc(62 + 44), Esc(62))
         If pnlToolbar.Height <> altura Then pnlToolbar.Height = altura
-        btnNovo.Top = topo : btnExportar.Top = topo : btnExcluir.Top = topo
+        btnNovo.Top = topo : btnExportar.Top = topo : btnExcluir.Top = topo : btnPeriodo.Top = topo : btnGerenciamento.Top = topo
         btnNovo.Left = direita - btnNovo.Width
         btnExportar.Left = btnNovo.Left - Esc(8) - btnExportar.Width
         btnExcluir.Left = btnExportar.Left - Esc(8) - btnExcluir.Width
+        Dim x = btnExcluir.Left
+        If btnPeriodo.Visible Then
+            btnPeriodo.Left = x - Esc(8) - btnPeriodo.Width
+            x = btnPeriodo.Left
+        End If
+        If btnGerenciamento.Visible Then btnGerenciamento.Left = x - Esc(8) - btnGerenciamento.Width
+    End Sub
+
+    ''' <summary>"Anotações por período": férias/afastamento no nome de outra pessoa (só gestor e diretoria).</summary>
+    Private Sub LancarPeriodo()
+        Using f As New frmApontamentoPeriodo()
+            If f.ShowDialog(Me) = DialogResult.OK Then
+                Carregar()
+                MostrarMensagem(f.MensagemResultado)
+            End If
+        End Using
     End Sub
 
     ' =================================================================
