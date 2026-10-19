@@ -23,7 +23,9 @@ Hoje o Time são duas janelas dos anos 2000: **Cadastro de Tempo** (`frmTimeDet`
 
 Capturas em `capturas\`: `01-apontamentos.png`, `02-novo-apontamento.png`, `02b-busca-cliente.png` (a lista filtrando com "aurora"), `03-varias-empresas.png`, `03b-dividir-tempo.png` (2 h divididas entre 4 empresas), `04-editar-apontamento.png`, `05-lancar-dia-pendente.png`, `06-banco-de-horas.png` (extrato).
 
-### Trava de 10 h e banco de horas (16/10/2026)
+### Trava de 10 h e banco de horas (16/10/2026; banco adiado em 19/10/2026)
+
+> **19/10/2026**: o banco de horas foi **adiado** pela diretoria (a equipe confundiria com o banco oficial do sistema de ponto). `BancoHoras.ATIVO = False` em `Apontamento.vb`: o cartão fica na tela sem número, o clique não abre o extrato e as mensagens não falam em banco. No lugar, quem passa de 8h00 é **avisado na tela** (subtítulo em vermelho e `MessageBox` ao gravar) e grava; a trava de 10 h continua. O que está descrito abaixo é a conta pronta, para quando for ligada.
 
 - **Regra**: ninguém aponta mais de 10h00 num dia (`BancoHoras.LIMITE_DIA`). O que passar da jornada do dia é crédito no banco de horas: 8h00 em dia útil, 4h00 no sábado (`JORNADA_SABADO`, a mesma conta da meta da TbHorasMes e do "Sabado" que o período grava), 0 no domingo. A conta começa em **01/10/2026** (`BancoHoras.INICIO_VIGENCIA`, a confirmar com a diretoria); apontamentos anteriores não entram.
 - **Nada novo no banco de dados**: o saldo é calculado a partir da TbTime (`Time_GetByData`) toda vez que a tela abre, em `BancoHoras.Calcular` (Apontamento.vb). Por isso editar ou excluir um apontamento corrige o saldo sozinho, e não existe risco de a conta divergir dos lançamentos.
@@ -87,5 +89,5 @@ Dependências já entregues antes: `TemaMecano.vb` (tela de login) e `UiMecano.v
 - ~~**Consulta do Time** (menu › Consulta): sai do menu ou vira o mesmo item da tela nova?~~ Decidido em 19/10/2026: aponta para a tela nova.
 - **Cartão "Horas do mês" na tela Início**: a proposta da tela principal previa esse cartão à direita do Início (nota "NOVO · HORAS DO MÊS" do canvas). O componente que desenha os cartões (`PainelResumoHoras`, em `frmApontamentos.vb`) já serve para isso; falta decidir se entra no Início junto com o calendário do Nibo ou no lugar dele.
 - ~~**Lançar para outra pessoa**: fica fora desta tela ou entra como opção só para gestor?~~ Decidido em 19/10/2026: entra, só para gestor e diretoria (campo Colaborador em `frmApontamentoDet`; a trava de 10 h usa `HorasNoDiaDe` da pessoa escolhida).
-- **Banco de horas**: confirmar a data de início da conta (hoje 01/10/2026) e se sábado e domingo entram inteiros. ~~Alimentar o "Banco de Horas (Saldos)" do RH?~~ Decidido em 19/10/2026: não; esse controle não é do Gerenciador.
+- ~~**Banco de horas**: confirmar a data de início da conta e se sábado e domingo entram inteiros.~~ Decidido em 19/10/2026: **adiado** (`BancoHoras.ATIVO = False`); início e regra do sábado ficam para quando for ligado. Não alimenta o "Banco de Horas (Saldos)" do RH.
 - ~~**Modo "várias empresas"**: trocar o padrão para "dividir"?~~ Decidido em 19/10/2026: fica "cada empresa fica com o tempo inteiro".

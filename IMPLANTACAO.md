@@ -173,17 +173,16 @@ Fazer com um **usuário comum** (não gestor) e depois com um **gestor**. Em cad
 - [ ] 20 empresas, 5 min, dividir: recusado ("algumas ficariam com zero").
 
 **Trava de 10 h**
-- [ ] Num dia com 8 h, lançar mais 1 h: grava e a mensagem diz "1h00 foi para o banco de horas".
+- [ ] Num dia com 8 h, lançar mais 1 h: o subtítulo fica vermelho ("acima de 8h00"), grava, e aparece a mensagem "Hoje ficou com 9h00, acima de 8h00". A linha está na TbTime.
 - [ ] No mesmo dia (9 h), lançar 3 h: recusado, "cabem mais 1h00".
 - [ ] Lançar 1 h: grava; dia em 10 h. Lançar mais 15 min: recusado, "não dá para lançar mais nesse dia".
 - [ ] Várias empresas num dia com 9 h, 4 empresas, 1 h "cada": recusado (4 h no total). Com "dividir": grava (1 h no total).
 - [ ] Editar uma linha de 1 h para 2 h num dia de 10 h: recusado.
 
-**Banco de horas**
-- [ ] Cartão BANCO DE HORAS mostra o saldo dos dias acima de 8 h desde 01/10/2026.
-- [ ] Clicar abre o extrato; dias, jornada e "para o banco" batem com a TbTime. Exportar funciona.
-- [ ] Excluir uma linha que gerou crédito: ao reabrir a tela, o saldo cai sozinho.
-- [ ] Lançar 4 h num sábado: entra inteiro no banco.
+**Banco de horas (adiado em 19/10/2026)**
+- [ ] Cartão BANCO DE HORAS aparece sem número, com "em breve"; clicar nele não abre nada e o cursor não vira mão.
+- [ ] Nenhuma mensagem da tela fala em "banco de horas".
+- [ ] (Só quando `BancoHoras.ATIVO` for True) Cartão mostra o saldo dos dias acima de 8 h desde 01/10/2026; clicar abre o extrato e os números batem com a TbTime; excluir uma linha que gerou crédito faz o saldo cair; 4 h num sábado entram inteiras.
 
 **Gestão (com um gestor; com um analista os dois botões não aparecem)**
 - [ ] "Lançar período": escolher outra pessoa, duas semanas, Férias / Afastamento. A janela diz "10 dias úteis × 8h00 e 2 sábados × 4h00 = 88h00". Gravar e conferir na TbTime: 12 linhas no USUARIOID dela, EMPRESA = "Ferias / Afastamento" e "Sabado", EMPRESAID vazio, TEMPO 8,00 e 4,00.
@@ -217,7 +216,7 @@ Só depois do roteiro acima aprovado em pré-produção e das decisões em abert
 
 - [ ] Repetir os passos 1 a 3 no projeto de produção (`Grupo_Mecano\Grupo_Mecano\`).
 - [ ] Publicar o Gerenciador como de costume.
-- [ ] Avisar a equipe: nova tela, teto de 10 h por dia, banco de horas na própria tela.
+- [ ] Avisar a equipe: nova tela, aviso acima de 8 h, teto de 10 h por dia.
 
 ## Voltar atrás
 

@@ -6,9 +6,10 @@ Tela nova de **apontamento de horas** (o "Time") para o Gerenciador Mêcano, no 
 |---|---|
 | **Rateio entre empresas** | Ao lançar para várias empresas, a pessoa escolhe se cada uma recebe o tempo inteiro (como hoje) ou se o tempo é **dividido por igual** entre elas. |
 | **Trava de 10 h por dia** | Ninguém grava mais de 10h00 de apontamento num dia. A tela avisa antes e recusa se passar. |
-| **Banco de horas** | O que passar de 8h00 num dia é crédito no banco de horas, que a pessoa consulta na própria tela. |
+| **Aviso acima de 8h00** | Quem passa de 8h00 num dia é avisado na própria tela (subtítulo em vermelho e uma mensagem ao gravar), mas grava. |
+| **Banco de horas (adiado)** | O cartão fica na tela sem número. A conta do que passa de 8h00 está pronta, desligada por uma chave (`BancoHoras.ATIVO`), para não confundir com o banco do sistema de ponto. |
 
-**Banco de dados: nada muda.** A tela grava na `TbTime` com as mesmas procedures de hoje. O banco de horas é calculado a partir dos apontamentos; não há tabela nova nem script SQL nesta entrega.
+**Banco de dados: nada muda.** A tela grava na `TbTime` com as mesmas procedures de hoje. Não há tabela nova nem script SQL nesta entrega.
 
 Estado em 16/10/2026: pronta para **pré-produção** (banco `Grupo_Mecano_Testes`). Passo a passo em [IMPLANTACAO.md](IMPLANTACAO.md).
 
@@ -21,7 +22,7 @@ Estado em 16/10/2026: pronta para **pré-produção** (banco `Grupo_Mecano_Teste
 ![Apontamentos](capturas/01-apontamentos.png)
 
 - **Período** (hoje, semana, mês, mês anterior, 30 dias ou datas livres) e **busca** por empresa, código ou atividade.
-- **Cinco cartões**: HOJE · ESTE MÊS (com o gráfico dia a dia) · MÊS ANTERIOR · MENOS DE 8 H nos últimos 20 dias (um chip por dia; clicar no dia abre o lançamento já naquela data) · **BANCO DE HORAS** (saldo; clicar abre o extrato).
+- **Cinco cartões**: HOJE · ESTE MÊS (com o gráfico dia a dia) · MÊS ANTERIOR · MENOS DE 8 H nos últimos 20 dias (um chip por dia; clicar no dia abre o lançamento já naquela data) · **BANCO DE HORAS** (adiado: sem número, "em breve").
 - Lista dos lançamentos; duplo clique ou Enter edita, Del exclui com confirmação, botão direito tem "Novo apontamento nesta data".
 - **Exportar** gera um CSV da lista filtrada, com total, que abre direto no Excel.
 
@@ -48,14 +49,16 @@ Marque **"Lançar para várias empresas"**, passe as empresas para a lista da di
 
 As duas frases mostram os números reais assim que você informa o tempo e as empresas. A divisão é feita em centésimos de hora, a unidade que o Time grava, para a soma fechar exata (2 h em 3 empresas = 0,67 + 0,67 + 0,66). Se o tempo for pequeno demais para dividir, a tela avisa e não grava.
 
-### Trava de 10 h e banco de horas
+### Aviso de 8 h e trava de 10 h
+
+- Quando o que você já tem no dia mais o que está digitando passa de **8h00**, o subtítulo fica vermelho: *"Hoje: 7h00 · com este: 9h00 · acima de 8h00"*. Ao gravar, aparece a mensagem *"Hoje ficou com 9h00, acima de 8h00."* O lançamento é gravado normalmente.
+- O que você já tem no dia **mais** o que vai gravar não pode passar de **10h00**. Se passar, a tela recusa e explica: *"Você já tem 9h00 hoje. O limite é 10h00 por dia, então cabem mais 1h00."*
+
+### Banco de horas (adiado)
 
 ![Banco de horas](capturas/06-banco-de-horas.png)
 
-- O que você já tem no dia **mais** o que vai gravar não pode passar de **10h00**. Se passar, a tela explica: *"Você já tem 9h00 hoje. O limite é 10h00 por dia, então cabem mais 1h00."*
-- O que passar da jornada do dia é crédito no **banco de horas**: **8h00** em dia útil, **4h00** no sábado (a mesma conta da meta mensal e do "Sabado" que o período grava), tudo no domingo.
-- O cartão BANCO DE HORAS mostra o saldo. Clicando nele abre o extrato: saldo, um chip por mês, a lista dos dias (data, apontado, jornada, quanto foi para o banco) e Exportar.
-- A conta começa em **01/10/2026**; apontamentos anteriores não entram.
+Decisão de 19/10/2026: o banco de horas fica **adiado**, para a equipe não confundir com o banco oficial do sistema de ponto. O cartão BANCO DE HORAS continua na tela, sem número ("em breve"), e o clique não abre nada. A conta (o que passa de 8h00 em dia útil e de 4h00 no sábado, desde 01/10/2026) e o extrato acima já estão prontos; para ligar, basta trocar `BancoHoras.ATIVO` para `True` em `Apontamento.vb`.
 
 ### Para gestor e diretoria: o resto do menu Time
 
@@ -95,7 +98,7 @@ A pasta `preprod\` tem só o que entra no Gerenciador: os sete `.vb` abaixo, nad
 | `preprod\ModApontamento.vb` | **sim** → `Grupo_Mecano\App_Code\` | Acesso a dados SQL: procedures `Time_*`, `HorasMes_GetList`, `TbClientes`, `Outros.txt`, `AposGravar` → `Opl2.menuacesso()`. |
 | `preprod\frmApontamentos.vb` | **sim** → `Grupo_Mecano\Cadastro\` | Tela principal (lista, cartões, período, busca, exportar). Tem `Abrir()` e `Embutir()`. |
 | `preprod\frmApontamentoDet.vb` | **sim** → `Grupo_Mecano\Cadastro\` | Lançamento novo / alterar; várias empresas (mesmo tempo ou rateio); trava de 10 h; gestor lança em nome de outra pessoa. |
-| `preprod\frmBancoHoras.vb` | **sim** → `Grupo_Mecano\Cadastro\` | Extrato do banco de horas (só leitura). |
+| `preprod\frmBancoHoras.vb` | **sim** → `Grupo_Mecano\Cadastro\` | Extrato do banco de horas (só leitura; dormente enquanto `BancoHoras.ATIVO` for False). |
 | `preprod\frmApontamentoPeriodo.vb` | **sim** → `Grupo_Mecano\Cadastro\` | "Anotações por período": férias/afastamento no nome de outra pessoa (gestor e diretoria). |
 | `preprod\frmGerenciamentoTime.vb` | **sim** → `Grupo_Mecano\Cadastro\` | "Gerenciamento do Time": as quatro consultas de gestão em abas (Analítica, Sintética, Por funcionário, Por usuário e data), só leitura, com exportação (gestor e diretoria). |
 | `ModApontamentoDemo.vb` | não | Versão da camada de dados que lê e grava em txt, para a demonstração. Mesmos membros públicos do `ModApontamento`. |
@@ -137,13 +140,13 @@ O que **não** foi testado ainda: a compilação dentro do projeto `Grupo_Mecano
 
 ## 3. Decisões em aberto (para a diretoria)
 
-- **Início da conta do banco de horas**: hoje 01/10/2026 (`BancoHoras.INICIO_VIGENCIA`).
-- **Sábado** conta 4h00 de jornada no banco (o que passar disso é crédito) e domingo entra inteiro. Confirmar.
 - **Quem vê o Gerenciamento e lança período**: a entrega restringe a gestor e diretoria. Hoje o menu libera as consultas (que trazem custo por hora) e o "Anotações Período" para analistas, assistentes e administrativo.
-- **Motivos do período**: ficaram só os dois textos de hoje ("Ferias / Afastamento", "Licenca maternidade"), para não criar uma categoria que os relatórios não conhecem. Acrescentar "Atestado"?
 
 ### Decididas em 19/10/2026
 
+- **Banco de horas adiado**: cartão na tela sem número; a conta fica pronta e desligada (`BancoHoras.ATIVO = False`). Quando for ligado, confirmar o início (01/10/2026) e a regra do sábado (4h00).
+- **Acima de 8h00**: a pessoa é avisada na tela e grava; a trava continua em 10h00.
+- **Motivos do período**: ficam os dois de hoje. Atestado já existe como atividade interna no lançamento comum.
 - O crédito do banco **não** alimenta o "Banco de Horas (Saldos)" do RH: esse controle não é feito pelo Gerenciador.
 - **Várias empresas**: fica como está, abrindo em "cada empresa fica com o tempo inteiro"; a pessoa escolhe "dividir" quando quiser.
 - **Retrabalho** sai de vez. A tela nova já não tem o campo; o `retrabalho.txt` só era lido pelas telas antigas, que saem do menu.

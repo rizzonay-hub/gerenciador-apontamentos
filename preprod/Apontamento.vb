@@ -292,6 +292,12 @@ End Class
 Public Class BancoHoras
     ''' <summary>Teto de apontamento por dia. Acima disso a tela não grava.</summary>
     Public Const LIMITE_DIA As Decimal = 10D
+    ''' <summary>
+    ''' Banco de horas ADIADO (decisão de 19/10/2026): a equipe confundiria com o banco oficial do sistema de ponto.
+    ''' Com False, o cartão fica na tela sem número, o clique não abre o extrato e a janela de lançamento avisa
+    ''' "acima de 8h00" em vez de "no banco". A trava de 10 h continua. Para ligar, basta trocar para True.
+    ''' </summary>
+    Public Const ATIVO As Boolean = False
     ''' <summary>Primeiro dia que entra na conta: início da vigência da regra (a confirmar com a diretoria).</summary>
     Public Shared ReadOnly INICIO_VIGENCIA As New Date(2026, 10, 1)
 

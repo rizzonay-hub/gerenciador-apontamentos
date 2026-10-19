@@ -3,6 +3,8 @@
 ## 19/10/2026 — decisões da diretoria
 
 **Novo**
+- **Aviso acima de 8h00**: na janela de lançamento, quando o dia passa de 8h00 o subtítulo fica vermelho ("· acima de 8h00") e, ao gravar, aparece uma mensagem na tela ("Hoje ficou com 9h00, acima de 8h00"). Grava normalmente; a trava de 10h00 continua recusando.
+- **Banco de horas adiado**: `BancoHoras.ATIVO = False`. O cartão fica na tela sem número ("em breve"), o clique não abre o extrato e nenhuma mensagem fala em banco. A conta e o extrato ficam prontos para ligar com a chave.
 - **Lançar em nome de outra pessoa**, só para gestor e diretoria: campo Colaborador na janela de lançamento (vem com o próprio nome). A trava de 10 h e o subtítulo usam as horas do dia da pessoa escolhida (`ModApontamento.HorasNoDiaDe`); o rodapé diz "Em nome de …" e o lançamento não entra na lista nem nos cartões de quem gravou.
 
 **Decidido** (README, "Decididas em 19/10/2026")
@@ -10,6 +12,7 @@
 - "Várias empresas" continua abrindo em "cada empresa fica com o tempo inteiro".
 - Retrabalho sai de vez.
 - O item Consulta do menu Time aponta para a tela nova.
+- Motivos do período ficam os dois de hoje; Atestado já é atividade interna.
 
 ## 16/10/2026 (noite) — menos texto na tela
 

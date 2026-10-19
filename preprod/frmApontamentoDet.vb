@@ -57,11 +57,14 @@ Public Class frmApontamentoDet
     Private ReadOnly _selecionados As New List(Of ClienteResumo)()
     Private _jaNoDia As Decimal = 0D                 ' horas que a pessoa já tem na data escolhida (sem este apontamento)
     Private _jaNoDiaData As Date = Date.MinValue     ' data a que _jaNoDia se refere
+    Private _acimaDaJornada As Boolean = False       ' o dia, com o que está digitado, passa de 8h00: subtítulo em vermelho
     Private _colaboradores As New List(Of ColaboradorResumo)()   ' só para gestor e diretoria, em lançamento novo
 
     Public Property IdGravado As Integer
     Public Property QuantidadeGravada As Integer
     Public Property MensagemResultado As String = ""
+    '''<summary>Texto do aviso mostrado na tela quando o dia passou de 8h00 (vazio quando não passou).</summary>
+    Public Property AvisoJornada As String = ""
 
     ' ---------- controles ----------
     Private pnlTopo As Panel
@@ -181,9 +184,10 @@ Public Class frmApontamentoDet
             TextRenderer.DrawText(g, titulo, fTitulo, New Rectangle(Esc(24), Esc(18), pnlTopo.Width - Esc(48), Esc(30)),
                                   TemaMecano.TextoCampo, TextFormatFlags.Left Or TextFormatFlags.VerticalCenter Or TextFormatFlags.EndEllipsis Or TextFormatFlags.NoPrefix)
         End Using
-        Using fSub = TemaMecano.FonteCorpo(9.25F)
-            TextRenderer.DrawText(g, Subtitulo(), fSub, New Rectangle(Esc(24), Esc(50), pnlTopo.Width - Esc(48), Esc(22)),
-                                  TemaMecano.CinzaEscuro, TextFormatFlags.Left Or TextFormatFlags.VerticalCenter Or TextFormatFlags.EndEllipsis Or TextFormatFlags.NoPrefix)
+        Dim textoSub As String = Subtitulo()
+        Using fSub = TemaMecano.FonteCorpo(9.25F, If(_acimaDaJornada, FontStyle.Bold, FontStyle.Regular))
+            TextRenderer.DrawText(g, textoSub, fSub, New Rectangle(Esc(24), Esc(50), pnlTopo.Width - Esc(48), Esc(22)),
+                                  If(_acimaDaJornada, TemaMecano.VermelhoPrimario, TemaMecano.CinzaEscuro), TextFormatFlags.Left Or TextFormatFlags.VerticalCenter Or TextFormatFlags.EndEllipsis Or TextFormatFlags.NoPrefix)
         End Using
     End Sub
 
@@ -195,7 +199,7 @@ Public Class frmApontamentoDet
     End Function
 
     ''' <summary>
-    ''' "Hoje: 7h00 · faltam 1h00 · com este: 9h00 (1h00 no banco)". Só os números da pessoa; quando passa do teto, avisa já aqui.
+    ''' "Hoje: 7h00 · faltam 1h00 · com este: 9h00 · acima de 8h00" (em vermelho). Só os números da pessoa; quando passa do teto de 10 h, avisa já aqui.
     ''' </summary>
     Private Function DescricaoDoDia() As String
         Dim dia = If(dtpData Is Nothing, _dataInicial, dtpData.Value.Date)
@@ -205,14 +209,19 @@ Public Class frmApontamentoDet
             s &= "  ·  faltam " & Apontamento.FormatarHoras(jornada - _jaNoDia)
         End If
         Dim novo = TotalASalvar()
+        _acimaDaJornada = False
         If novo > 0D Then
             Dim total = _jaNoDia + novo
             s &= "  ·  com este: " & Apontamento.FormatarHoras(total)
             If total > BancoHoras.LIMITE_DIA Then
-                s &= "  (passa de " & Apontamento.FormatarHoras(BancoHoras.LIMITE_DIA) & ")"
-            Else
+                s &= "  ·  passa de " & Apontamento.FormatarHoras(BancoHoras.LIMITE_DIA)
+                _acimaDaJornada = True
+            ElseIf BancoHoras.ATIVO Then
                 Dim extra = BancoHoras.ExtraDoLancamento(dia, _jaNoDia, novo)
                 If extra > 0D Then s &= "  (" & Apontamento.FormatarHoras(extra) & " no banco)"
+            ElseIf total > ResumoHoras.JORNADA Then
+                s &= "  ·  acima de " & Apontamento.FormatarHoras(ResumoHoras.JORNADA)
+                _acimaDaJornada = True
             End If
         End If
         Return s
@@ -1063,9 +1072,17 @@ Public Class frmApontamentoDet
                                     Apontamento.FormatarHoras(horas) & " em " & a.Empresa & " (" & dataLanc.ToString("dd/MM") & ")."
             End If
             If OutraPessoa() Then MensagemResultado &= "  Em nome de " & NomeAlvo() & "."
-            ' o que passou da jornada do dia é crédito no banco de horas (só informação: a conta é refeita a partir da TbTime)
-            Dim extra = BancoHoras.ExtraDoLancamento(dataLanc, _jaNoDia, totalGravado)
-            If extra > 0D Then MensagemResultado &= "  " & Apontamento.FormatarHoras(extra) & " foi para o banco de horas."
+            Dim totalDia = _jaNoDia + totalGravado
+            If BancoHoras.ATIVO Then
+                ' o que passou da jornada do dia é crédito no banco de horas (só informação: a conta é refeita a partir da TbTime)
+                Dim extra = BancoHoras.ExtraDoLancamento(dataLanc, _jaNoDia, totalGravado)
+                If extra > 0D Then MensagemResultado &= "  " & Apontamento.FormatarHoras(extra) & " foi para o banco de horas."
+            ElseIf totalDia > ResumoHoras.JORNADA Then
+                ' aviso de 8 h (decisão de 19/10/2026): a pessoa é avisada na tela, mas grava; o teto de 10 h é a trava
+                AvisoJornada = If(dataLanc = Date.Today, "Hoje", "O dia " & dataLanc.ToString("dd/MM")) & " ficou com " & Apontamento.FormatarHoras(totalDia) &
+                               ", acima de " & Apontamento.FormatarHoras(ResumoHoras.JORNADA) & "."
+                MensagemResultado &= "  " & AvisoJornada
+            End If
             ModApontamento.AposGravar()
         Catch ex As Exception
             MessageBox.Show(Me, "Não foi possível gravar." & vbCrLf & ex.Message, "Apontamento", MessageBoxButtons.OK, MessageBoxIcon.Error)
@@ -1075,6 +1092,9 @@ Public Class frmApontamentoDet
         End Try
 
         _gravou = True
+        If AvisoJornada <> "" Then
+            MessageBox.Show(Me, AvisoJornada, "Apontamento", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+        End If
         If eNovo Then
             PrepararProximo(totalGravado)
         Else
@@ -1096,7 +1116,8 @@ Public Class frmApontamentoDet
         numHoras.Value = 0
         numMinutos.Value = 0
         lblRodape.Text = MensagemResultado
-        lblRodape.ForeColor = Color.FromArgb(22, 101, 52)
+        lblRodape.ForeColor = If(AvisoJornada <> "", TemaMecano.VermelhoPrimario, Color.FromArgb(22, 101, 52))
+        AvisoJornada = ""
         pnlTopo.Invalidate()
         If rbCliente.Checked Then txtCliente.Focus() Else cboAtividade.Focus()
     End Sub

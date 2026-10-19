@@ -301,6 +301,7 @@ Public Class frmApontamentos
 
     ''' <summary>Extrato do banco de horas: os dias em que a pessoa passou da jornada, desde BancoHoras.INICIO_VIGENCIA.</summary>
     Private Sub AbrirBanco()
+        If Not BancoHoras.ATIVO OrElse _banco Is Nothing Then Return
         Using f As New frmBancoHoras(_banco)
             f.ShowDialog(Me)
         End Using
@@ -471,7 +472,7 @@ Public Class frmApontamentos
         Me.Cursor = Cursors.WaitCursor
         Try
             _resumo = ModApontamento.CalcularResumo()
-            _banco = ModApontamento.CalcularBanco()
+            _banco = If(BancoHoras.ATIVO, ModApontamento.CalcularBanco(), New BancoHoras())
             pnlResumo.Banco = _banco
             pnlResumo.Resumo = _resumo
             Dim p = PeriodoAtual()
@@ -713,13 +714,13 @@ Friend Class PainelResumoHoras
 
     Protected Overrides Sub OnMouseMove(e As MouseEventArgs)
         MyBase.OnMouseMove(e)
-        Me.Cursor = If(_chips.Any(Function(c) c.Key.Contains(e.Location)) OrElse _rBanco.Contains(e.Location), Cursors.Hand, Cursors.Default)
+        Me.Cursor = If(_chips.Any(Function(c) c.Key.Contains(e.Location)) OrElse (BancoHoras.ATIVO AndAlso _rBanco.Contains(e.Location)), Cursors.Hand, Cursors.Default)
     End Sub
 
     Protected Overrides Sub OnMouseClick(e As MouseEventArgs)
         MyBase.OnMouseClick(e)
         If e.Button <> MouseButtons.Left Then Return
-        If _rBanco.Contains(e.Location) Then
+        If BancoHoras.ATIVO AndAlso _rBanco.Contains(e.Location) Then
             RaiseEvent BancoClicado()
             Return
         End If
@@ -855,7 +856,11 @@ Friend Class PainelResumoHoras
         ' ---- BANCO DE HORAS (o que passou da jornada por dia; clique abre o extrato)
         Cartao(g, rBanco, "BANCO DE HORAS")
         Dim b = _banco
-        If b Is Nothing Then
+        If Not BancoHoras.ATIVO Then
+            ' adiado: o cartão fica no lugar, sem número, para não confundir com o banco do sistema de ponto
+            Grande(g, rBanco, "—", TemaMecano.CinzaClaro)
+            Pequeno(g, rBanco, Esc(74), "em breve", TemaMecano.CinzaClaro)
+        ElseIf b Is Nothing Then
             Pequeno(g, rBanco, Esc(74), "Carregando…", TemaMecano.CinzaClaro)
         Else
             Dim saldo = b.Saldo
