@@ -1,5 +1,16 @@
 # Histórico — Apontamentos de horas
 
+## 19/10/2026 — decisões da diretoria
+
+**Novo**
+- **Lançar em nome de outra pessoa**, só para gestor e diretoria: campo Colaborador na janela de lançamento (vem com o próprio nome). A trava de 10 h e o subtítulo usam as horas do dia da pessoa escolhida (`ModApontamento.HorasNoDiaDe`); o rodapé diz "Em nome de …" e o lançamento não entra na lista nem nos cartões de quem gravou.
+
+**Decidido** (README, "Decididas em 19/10/2026")
+- O banco de horas não alimenta o "Banco de Horas (Saldos)" do RH.
+- "Várias empresas" continua abrindo em "cada empresa fica com o tempo inteiro".
+- Retrabalho sai de vez.
+- O item Consulta do menu Time aponta para a tela nova.
+
 ## 16/10/2026 (noite) — menos texto na tela
 
 - Pasta `preprod\` com os sete `.vb` que entram no Gerenciador (os únicos arquivos que sobem); a demonstração e os `.txt` ficam na raiz.

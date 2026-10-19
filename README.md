@@ -33,6 +33,8 @@ Estado em 16/10/2026: pronta para **pré-produção** (banco `Grupo_Mecano_Teste
 2. Informe a **data** (nunca futura) e o **tempo** em horas e minutos, ou use um atalho (15 min, 30 min, 1 h, 2 h, 4 h, 8 h).
 3. **Salvar**, ou **Salvar e novo** (Ctrl+Enter) para lançar o dia inteiro sem fechar a janela.
 
+Gestor e diretoria veem um campo a mais, **Colaborador**, para gravar em nome de outra pessoa (vem com o próprio nome). A trava de 10 h e o subtítulo passam a ser os do dia dela, e o lançamento não aparece na lista de quem gravou.
+
 O subtítulo da janela acompanha o dia, só com os números: *"Hoje: 7h00 · faltam 1h00 · com este: 9h00 (1h00 no banco)"*.
 
 ### Várias empresas de uma vez
@@ -92,7 +94,7 @@ A pasta `preprod\` tem só o que entra no Gerenciador: os sete `.vb` abaixo, nad
 | `preprod\Apontamento.vb` | **sim** → `Grupo_Mecano\Cadastro\` | Modelos: `Apontamento`, `ClienteResumo`, `ResumoHoras` (regra da trava de horas), `BancoHoras` (rateio, teto de 10 h e banco de horas). |
 | `preprod\ModApontamento.vb` | **sim** → `Grupo_Mecano\App_Code\` | Acesso a dados SQL: procedures `Time_*`, `HorasMes_GetList`, `TbClientes`, `Outros.txt`, `AposGravar` → `Opl2.menuacesso()`. |
 | `preprod\frmApontamentos.vb` | **sim** → `Grupo_Mecano\Cadastro\` | Tela principal (lista, cartões, período, busca, exportar). Tem `Abrir()` e `Embutir()`. |
-| `preprod\frmApontamentoDet.vb` | **sim** → `Grupo_Mecano\Cadastro\` | Lançamento novo / alterar; várias empresas (mesmo tempo ou rateio); trava de 10 h. |
+| `preprod\frmApontamentoDet.vb` | **sim** → `Grupo_Mecano\Cadastro\` | Lançamento novo / alterar; várias empresas (mesmo tempo ou rateio); trava de 10 h; gestor lança em nome de outra pessoa. |
 | `preprod\frmBancoHoras.vb` | **sim** → `Grupo_Mecano\Cadastro\` | Extrato do banco de horas (só leitura). |
 | `preprod\frmApontamentoPeriodo.vb` | **sim** → `Grupo_Mecano\Cadastro\` | "Anotações por período": férias/afastamento no nome de outra pessoa (gestor e diretoria). |
 | `preprod\frmGerenciamentoTime.vb` | **sim** → `Grupo_Mecano\Cadastro\` | "Gerenciamento do Time": as quatro consultas de gestão em abas (Analítica, Sintética, Por funcionário, Por usuário e data), só leitura, com exportação (gestor e diretoria). |
@@ -139,10 +141,13 @@ O que **não** foi testado ainda: a compilação dentro do projeto `Grupo_Mecano
 - **Sábado** conta 4h00 de jornada no banco (o que passar disso é crédito) e domingo entra inteiro. Confirmar.
 - **Quem vê o Gerenciamento e lança período**: a entrega restringe a gestor e diretoria. Hoje o menu libera as consultas (que trazem custo por hora) e o "Anotações Período" para analistas, assistentes e administrativo.
 - **Motivos do período**: ficaram só os dois textos de hoje ("Ferias / Afastamento", "Licenca maternidade"), para não criar uma categoria que os relatórios não conhecem. Acrescentar "Atestado"?
-- O crédito do banco deve **alimentar o "Banco de Horas (Saldos)"** do RH (menu Controle do Ponto) no fechamento do mês? Hoje não grava lá.
-- **Padrão de "várias empresas"**: hoje abre em "cada empresa fica com o tempo inteiro". Trocar para "dividir" é uma linha.
-- **Retrabalho** pode sair de vez? (está oculto no Designer desde 2022 e sem lançamento desde 2025)
-- O item **Consulta** do menu Time sai ou aponta para a tela nova?
-- **Lançar para outra pessoa** (gestor): fica fora ou entra só para gestor?
+
+### Decididas em 19/10/2026
+
+- O crédito do banco **não** alimenta o "Banco de Horas (Saldos)" do RH: esse controle não é feito pelo Gerenciador.
+- **Várias empresas**: fica como está, abrindo em "cada empresa fica com o tempo inteiro"; a pessoa escolhe "dividir" quando quiser.
+- **Retrabalho** sai de vez. A tela nova já não tem o campo; o `retrabalho.txt` só era lido pelas telas antigas, que saem do menu.
+- O item **Consulta** do menu Time aponta para a tela nova (passo 2 do IMPLANTACAO.md).
+- **Lançar para outra pessoa** entra, só para gestor e diretoria (campo Colaborador na janela de lançamento).
 
 Detalhes, histórico e justificativas em [LEIA-ME.md](LEIA-ME.md). Mudanças por data em [CHANGELOG.md](CHANGELOG.md).

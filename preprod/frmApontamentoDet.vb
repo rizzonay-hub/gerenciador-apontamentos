@@ -57,6 +57,7 @@ Public Class frmApontamentoDet
     Private ReadOnly _selecionados As New List(Of ClienteResumo)()
     Private _jaNoDia As Decimal = 0D                 ' horas que a pessoa já tem na data escolhida (sem este apontamento)
     Private _jaNoDiaData As Date = Date.MinValue     ' data a que _jaNoDia se refere
+    Private _colaboradores As New List(Of ColaboradorResumo)()   ' só para gestor e diretoria, em lançamento novo
 
     Public Property IdGravado As Integer
     Public Property QuantidadeGravada As Integer
@@ -92,6 +93,8 @@ Public Class frmApontamentoDet
     Private numHoras As NumericUpDown
     Private numMinutos As NumericUpDown
     Private lblEquivale As Label
+    Private lblColaborador As Label           ' gestor e diretoria: em nome de quem gravar
+    Private cboColaborador As ComboBox
     Private btnSalvar As BotaoMecano
     Private btnSalvarNovo As BotaoMecano
     Private btnCancelar As BotaoMecano
@@ -197,7 +200,7 @@ Public Class frmApontamentoDet
     Private Function DescricaoDoDia() As String
         Dim dia = If(dtpData Is Nothing, _dataInicial, dtpData.Value.Date)
         Dim jornada = BancoHoras.JornadaDoDia(dia)
-        Dim s = If(dia = Date.Today, "Hoje", Apontamento.FormatarData(dia)) & ": " & Apontamento.FormatarHoras(_jaNoDia)
+        Dim s = If(OutraPessoa(), NomeAlvo() & "  ·  ", "") & If(dia = Date.Today, "Hoje", Apontamento.FormatarData(dia)) & ": " & Apontamento.FormatarHoras(_jaNoDia)
         If jornada > 0D AndAlso _jaNoDia < jornada Then
             s &= "  ·  faltam " & Apontamento.FormatarHoras(jornada - _jaNoDia)
         End If
@@ -225,12 +228,27 @@ Public Class frmApontamentoDet
         Return horas
     End Function
 
+    '''<summary>Em nome de quem o lançamento é gravado: a pessoa logada ou, para gestor e diretoria, a escolhida na lista.</summary>
+    Private Function UsuarioAlvo() As Integer
+        Dim c = If(cboColaborador Is Nothing, Nothing, TryCast(cboColaborador.SelectedItem, ColaboradorResumo))
+        Return If(c Is Nothing, ModApontamento.UsuarioLogadoId(), c.Id)
+    End Function
+
+    Private Function OutraPessoa() As Boolean
+        Return UsuarioAlvo() <> ModApontamento.UsuarioLogadoId()
+    End Function
+
+    Private Function NomeAlvo() As String
+        Dim c = If(cboColaborador Is Nothing, Nothing, TryCast(cboColaborador.SelectedItem, ColaboradorResumo))
+        Return If(c Is Nothing, "", c.Nome)
+    End Function
+
     ''' <summary>Lê (uma vez por data) quanto a pessoa já tem no dia escolhido, sem este apontamento quando é alteração.</summary>
     Private Sub CarregarHorasDoDia(Optional forcar As Boolean = False)
         Dim dia = If(dtpData Is Nothing, _dataInicial, dtpData.Value.Date)
         If dia = _jaNoDiaData AndAlso Not forcar Then Return
         Try
-            _jaNoDia = ModApontamento.HorasNoDia(dia, _id)
+            _jaNoDia = ModApontamento.HorasNoDiaDe(UsuarioAlvo(), dia, _id)
         Catch
             _jaNoDia = 0D
         End Try
@@ -401,7 +419,19 @@ Public Class frmApontamentoDet
             .AutoSize = False, .Left = Esc(190), .Top = Esc(92), .Width = Esc(520), .Height = Esc(20),
             .ForeColor = TemaMecano.CinzaClaro, .Font = TemaMecano.FonteCorpo(8.75F)}
 
-        secQuando.Controls.AddRange(New Control() {dtpData, numHoras, lblH, numMinutos, lblM, lblEquivale})
+        ' gestor e diretoria podem lançar em nome de outra pessoa (só em lançamento novo); aparece em CarregarDados
+        lblColaborador = New Label With {.Text = "Colaborador", .AutoSize = True, .Left = Esc(420), .Top = Esc(40), .Visible = False,
+                                         .ForeColor = TemaMecano.CinzaEscuro, .Font = TemaMecano.FonteCorpo(8.75F)}
+        cboColaborador = New ComboBox With {
+            .Left = Esc(420), .Top = Esc(60), .Width = Esc(290), .DropDownStyle = ComboBoxStyle.DropDownList, .Visible = False,
+            .Font = TemaMecano.FonteCorpo(10.0F), .FlatStyle = FlatStyle.System, .DropDownHeight = Esc(300)}
+        AddHandler cboColaborador.SelectedIndexChanged, Sub()
+                                                           If _carregando Then Return
+                                                           CarregarHorasDoDia(forcar:=True)
+                                                           pnlTopo.Invalidate()
+                                                       End Sub
+
+        secQuando.Controls.AddRange(New Control() {dtpData, numHoras, lblH, numMinutos, lblM, lblEquivale, lblColaborador, cboColaborador})
 
         pnlCorpo.Controls.Add(secOque)
         pnlCorpo.Controls.Add(secQuando)
@@ -540,12 +570,30 @@ Public Class frmApontamentoDet
         Try
             _clientes = ModApontamento.Clientes()
             _atividades = ModApontamento.AtividadesInternas()
+            If _id = 0 AndAlso ModApontamento.PodeGerenciar() Then _colaboradores = ModApontamento.Colaboradores()
             CarregarHorasDoDia()
         Catch ex As Exception
             MessageBox.Show(Me, "Não foi possível ler a lista de clientes." & vbCrLf & ex.Message, "Apontamento", MessageBoxButtons.OK, MessageBoxIcon.Error)
         Finally
             Me.Cursor = Cursors.Default
         End Try
+
+        If _colaboradores.Count > 0 Then
+            Dim eu = ModApontamento.UsuarioLogadoId()
+            cboColaborador.Items.Clear()
+            Dim idx = -1
+            For Each c In _colaboradores.Where(Function(x) Not x.Desligado)
+                cboColaborador.Items.Add(c)
+                If c.Id = eu Then idx = cboColaborador.Items.Count - 1
+            Next
+            If idx < 0 Then
+                cboColaborador.Items.Insert(0, New ColaboradorResumo With {.Id = eu, .Nome = ModApontamento.UsuarioLogadoNome()})
+                idx = 0
+            End If
+            cboColaborador.SelectedIndex = idx
+            lblColaborador.Visible = True
+            cboColaborador.Visible = True
+        End If
 
         cboAtividade.Items.Clear()
         For Each t In _atividades
@@ -946,10 +994,11 @@ Public Class frmApontamentoDet
         If novo <= cabe Then Return True
         Dim quando = If(dia = Date.Today, "hoje", "em " & dia.ToString("dd/MM"))
         Dim limite = Apontamento.FormatarHoras(BancoHoras.LIMITE_DIA)
+        Dim quem = If(OutraPessoa(), NomeAlvo() & " já tem ", "Você já tem ")
         If cabe <= 0D Then
-            Aviso("Você já tem " & Apontamento.FormatarHoras(_jaNoDia) & " " & quando & ". O limite é " & limite & " por dia, então não dá para lançar mais nesse dia.", numHoras)
+            Aviso(quem & Apontamento.FormatarHoras(_jaNoDia) & " " & quando & ". O limite é " & limite & " por dia, então não dá para lançar mais nesse dia.", numHoras)
         Else
-            Aviso("Você já tem " & Apontamento.FormatarHoras(_jaNoDia) & " " & quando & ". O limite é " & limite & " por dia, então cabem mais " & Apontamento.FormatarHoras(cabe) & "." & vbCrLf &
+            Aviso(quem & Apontamento.FormatarHoras(_jaNoDia) & " " & quando & ". O limite é " & limite & " por dia, então cabem mais " & Apontamento.FormatarHoras(cabe) & "." & vbCrLf &
                   If(chkVarias.Checked, "Diminua o tempo ou tire empresas da lista.", "Diminua o tempo."), numHoras)
         End If
         Return False
@@ -976,7 +1025,7 @@ Public Class frmApontamentoDet
                 Dim ultimo = 0
                 For i = 0 To empresas.Count - 1
                     Dim c = empresas(i)
-                    ultimo = ModApontamento.Inserir(New Apontamento With {.Data = dataLanc, .Empresa = c.Nome, .EmpresaId = c.Tradutor, .Horas = partes(i), .UsuarioId = ModApontamento.UsuarioLogadoId()})
+                    ultimo = ModApontamento.Inserir(New Apontamento With {.Data = dataLanc, .Empresa = c.Nome, .EmpresaId = c.Tradutor, .Horas = partes(i), .UsuarioId = UsuarioAlvo()})
                     n += 1
                 Next
                 totalGravado = partes.Sum()
@@ -994,7 +1043,7 @@ Public Class frmApontamentoDet
                 Dim a = If(_original Is Nothing, New Apontamento(), _original.Clonar())
                 a.Data = dataLanc
                 a.Horas = horas
-                a.UsuarioId = If(a.UsuarioId > 0, a.UsuarioId, ModApontamento.UsuarioLogadoId())
+                a.UsuarioId = If(a.UsuarioId > 0, a.UsuarioId, UsuarioAlvo())
                 If rbCliente.Checked Then
                     Dim c = _clienteSelecionado
                     a.Empresa = c.Nome
@@ -1013,6 +1062,7 @@ Public Class frmApontamentoDet
                 MensagemResultado = If(_original Is Nothing, "Apontamento gravado: ", "Apontamento alterado: ") &
                                     Apontamento.FormatarHoras(horas) & " em " & a.Empresa & " (" & dataLanc.ToString("dd/MM") & ")."
             End If
+            If OutraPessoa() Then MensagemResultado &= "  Em nome de " & NomeAlvo() & "."
             ' o que passou da jornada do dia é crédito no banco de horas (só informação: a conta é refeita a partir da TbTime)
             Dim extra = BancoHoras.ExtraDoLancamento(dataLanc, _jaNoDia, totalGravado)
             If extra > 0D Then MensagemResultado &= "  " & Apontamento.FormatarHoras(extra) & " foi para o banco de horas."
@@ -1036,7 +1086,7 @@ Public Class frmApontamentoDet
     ''' <summary>"Salvar e novo": mantém a data e o tipo, limpa o resto e atualiza o contexto do dia.</summary>
     Private Sub PrepararProximo(totalGravado As Decimal)
         ' totalGravado já é a soma das linhas gravadas (uma, N iguais ou o rateio)
-        If _resumo IsNot Nothing AndAlso dtpData.Value.Date = _resumo.Hoje Then
+        If _resumo IsNot Nothing AndAlso dtpData.Value.Date = _resumo.Hoje AndAlso Not OutraPessoa() Then
             _resumo.HorasHoje += totalGravado
         End If
         CarregarHorasDoDia(forcar:=True)     ' o dia agora tem o que acabou de ser gravado

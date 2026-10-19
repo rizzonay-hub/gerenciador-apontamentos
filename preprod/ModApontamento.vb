@@ -104,7 +104,12 @@ Public Module ModApontamento
 
     ''' <summary>Horas que a pessoa já tem numa data, sem contar o apontamento que está sendo alterado (trava de 10 h por dia).</summary>
     Public Function HorasNoDia(data As Date, excetoId As Integer) As Decimal
-        Return Listar(data, data).Where(Function(a) a.Id <> excetoId).Sum(Function(a) a.Horas)
+        Return HorasNoDiaDe(Usersys, data, excetoId)
+    End Function
+
+    '''<summary>O mesmo para outra pessoa: o gestor lançando em nome dela vê a trava de 10 h do dia dela.</summary>
+    Public Function HorasNoDiaDe(usuarioId As Integer, data As Date, excetoId As Integer) As Decimal
+        Return ListarDe(usuarioId, data, data).Where(Function(a) a.Id <> excetoId).Sum(Function(a) a.Horas)
     End Function
 
     Public Function Obter(id As Integer) As Apontamento

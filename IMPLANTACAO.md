@@ -188,6 +188,8 @@ Fazer com um **usuário comum** (não gestor) e depois com um **gestor**. Em cad
 **Gestão (com um gestor; com um analista os dois botões não aparecem)**
 - [ ] "Lançar período": escolher outra pessoa, duas semanas, Férias / Afastamento. A janela diz "10 dias úteis × 8h00 e 2 sábados × 4h00 = 88h00". Gravar e conferir na TbTime: 12 linhas no USUARIOID dela, EMPRESA = "Ferias / Afastamento" e "Sabado", EMPRESAID vazio, TEMPO 8,00 e 4,00.
 - [ ] Repetir o mesmo período: a janela avisa que os dias já têm apontamento e não grava nada.
+- [ ] "Novo apontamento" como gestor: aparece o campo **Colaborador** com o próprio nome. Escolher outra pessoa, lançar 1 h: a linha vai para o USUARIOID dela na TbTime, não aparece na lista de quem gravou e o rodapé diz "Em nome de …". Com um analista o campo não aparece.
+- [ ] Como gestor, escolher uma pessoa que já tem 10 h num dia e tentar lançar mais: recusado com o nome dela na mensagem.
 - [ ] "Gerenciamento", aba Analítica: mesmo período e filtros na tela antiga (Consulta Analítica) e na nova; a contagem de linhas e o total de horas têm de ser iguais nos três modos (Tudo / só clientes / só atividades internas), com "Todos" e com um colaborador escolhido, com "Todas as empresas" e com uma empresa.
 - [ ] Exportar de cada aba abre no Excel com acentos corretos e a linha de total.
 
@@ -224,4 +226,3 @@ Sem nada no banco, voltar é trocar o menu de volta para `New frmTimeDet(0)…Sh
 ## Depois (não bloqueia a pré-produção)
 
 - Quando o script `2026-09-23-Perfis-e-Trava-Horas.sql` (entrega de Colaboradores) subir: trocar as constantes `ResumoHoras.JORNADA` e `DIAS_VERIFICADOS` pela leitura de `JORNADADIARIA` e `TbFeriado`, e `BancoHoras.JornadaDoDia` passa a considerar feriados.
-- Se a diretoria quiser, alimentar o "Banco de Horas (Saldos)" do RH no fechamento do mês com o crédito calculado (uma linha por competência, `EntradaSaidaBancoHorasSaldo_Insert`).

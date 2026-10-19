@@ -83,9 +83,9 @@ Dependências já entregues antes: `TemaMecano.vb` (tela de login) e `UiMecano.v
 
 ## 6. Pontos para decidir
 
-- **Retrabalho**: confirmar que pode sair de vez (hoje já está oculto).
-- **Consulta do Time** (menu › Consulta): sai do menu ou vira o mesmo item da tela nova?
+- ~~**Retrabalho**: confirmar que pode sair de vez (hoje já está oculto).~~ Decidido em 19/10/2026: sai.
+- ~~**Consulta do Time** (menu › Consulta): sai do menu ou vira o mesmo item da tela nova?~~ Decidido em 19/10/2026: aponta para a tela nova.
 - **Cartão "Horas do mês" na tela Início**: a proposta da tela principal previa esse cartão à direita do Início (nota "NOVO · HORAS DO MÊS" do canvas). O componente que desenha os cartões (`PainelResumoHoras`, em `frmApontamentos.vb`) já serve para isso; falta decidir se entra no Início junto com o calendário do Nibo ou no lugar dele.
-- **Lançar para outra pessoa** (gestor preenchendo o time de alguém, como o `frmTimePeriodo` faz por período): fica fora desta tela ou entra como opção só para gestor?
-- **Banco de horas**: confirmar a data de início da conta (hoje 01/10/2026), se sábado e domingo entram inteiros, e se o crédito deve alimentar o "Banco de Horas (Saldos)" do RH no fechamento do mês.
-- **Modo "várias empresas"**: o padrão ao abrir é "cada empresa fica com o tempo inteiro" (comportamento do Time de hoje). Trocar o padrão para "dividir" é uma linha.
+- ~~**Lançar para outra pessoa**: fica fora desta tela ou entra como opção só para gestor?~~ Decidido em 19/10/2026: entra, só para gestor e diretoria (campo Colaborador em `frmApontamentoDet`; a trava de 10 h usa `HorasNoDiaDe` da pessoa escolhida).
+- **Banco de horas**: confirmar a data de início da conta (hoje 01/10/2026) e se sábado e domingo entram inteiros. ~~Alimentar o "Banco de Horas (Saldos)" do RH?~~ Decidido em 19/10/2026: não; esse controle não é do Gerenciador.
+- ~~**Modo "várias empresas"**: trocar o padrão para "dividir"?~~ Decidido em 19/10/2026: fica "cada empresa fica com o tempo inteiro".
