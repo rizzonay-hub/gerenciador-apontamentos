@@ -98,6 +98,8 @@ Public Module DemoMain
         novo.DigitarCliente("")
         novo.DefinirVarias(True)
         Processar(6)
+        novo.EscolherGrupo("Minha carteira")
+        Processar(4)
         SalvarCaptura(novo, Path.Combine(pasta, "03-varias-empresas.png"))
         novo.DemonstrarRateio(4, 120)
         Processar(6)
@@ -125,6 +127,14 @@ Public Module DemoMain
             SalvarCaptura(dia, Path.Combine(pasta, "05-lancar-dia-pendente.png"))
             dia.Close()
         End If
+
+        Dim grupos As New frmGruposEmpresas()
+        grupos.StartPosition = FormStartPosition.Manual
+        grupos.Location = New Point(0, 0)
+        grupos.Show()
+        Processar(8)
+        SalvarCaptura(grupos, Path.Combine(pasta, "03c-meus-grupos.png"))
+        grupos.Close()
 
         Dim banco As New frmBancoHoras(ModApontamento.CalcularBanco())
         banco.StartPosition = FormStartPosition.Manual

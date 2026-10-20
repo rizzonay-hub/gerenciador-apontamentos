@@ -1,0 +1,11 @@
+USUARIOID|GRUPO|EMPRESAID
+999|Minha carteira|0051
+999|Minha carteira|1194
+999|Minha carteira|0139
+999|Minha carteira|0637
+999|Minha carteira|2042
+999|Minha carteira|0532
+999|Fechamento do mês|0004
+999|Fechamento do mês|0014
+999|Fechamento do mês|0025
+999|Fechamento do mês|0041

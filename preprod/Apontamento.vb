@@ -700,3 +700,39 @@ Public Class LinhaUsuarioData
         Return total
     End Function
 End Class
+
+''' <summary>
+''' "Meus grupos de empresas": empresas que a pessoa marca sempre juntas no lançamento com várias
+''' empresas ("Minha carteira", "Fechamento do mês"). Um grupo é um nome e os códigos TRADUTOR,
+''' da pessoa logada; uma linha por empresa na TbTimeGrupoEmpresa (script 2026-10-20-Grupos-de-Empresas.sql).
+''' </summary>
+Public Class GrupoEmpresas
+    Public Const TAMANHO_NOME As Integer = 60
+
+    Public Property UsuarioId As Integer
+    Public Property Nome As String = ""
+    '''<summary>Códigos TRADUTOR das empresas do grupo.</summary>
+    Public Property Codigos As New List(Of String)()
+
+    Public ReadOnly Property Rotulo As String
+        Get
+            Return Nome & "  (" & Codigos.Count & If(Codigos.Count = 1, " empresa)", " empresas)")
+        End Get
+    End Property
+
+    Public Overrides Function ToString() As String
+        Return Rotulo
+    End Function
+
+    Public Function Clonar() As GrupoEmpresas
+        Dim g As New GrupoEmpresas With {.UsuarioId = UsuarioId, .Nome = Nome}
+        g.Codigos.AddRange(Codigos)
+        Return g
+    End Function
+
+    '''<summary>As empresas do grupo que existem na lista de clientes (códigos que sumiram do cadastro são ignorados).</summary>
+    Public Function Empresas(clientes As IEnumerable(Of ClienteResumo)) As List(Of ClienteResumo)
+        Dim chaves = New HashSet(Of String)(Codigos.Select(Function(c) c.Trim().TrimStart("0"c)))
+        Return clientes.Where(Function(c) chaves.Contains(c.Tradutor.Trim().TrimStart("0"c))).OrderBy(Function(c) c.Nome).ToList()
+    End Function
+End Class

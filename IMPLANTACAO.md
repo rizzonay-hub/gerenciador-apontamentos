@@ -3,7 +3,7 @@
 Servidor de banco: `MEC-SRV-04\SQLEXPRESS`. Produção = `Grupo_Mecano`. Pré-produção (teste) = `Grupo_Mecano_Testes`.
 Projeto: `Grupo_Mecano` (Visual Basic, .NET Framework 4.8). A cópia de testes do projeto está em `..\Grupo_Mecano_Testes`.
 
-**Esta entrega não tem script SQL.** A tela usa as procedures que o Time já usa (`Time_GetByData`, `Time_Get`, `Time_Insert`, `Time_Update`, `Time_Delete`, `HorasMes_GetList`) e lê `TbClientes`. Nada é criado nem alterado no banco. Voltar atrás é só apontar o menu de volta para a tela antiga.
+**Um script SQL, só para os grupos de empresas.** A tela usa as procedures que o Time já usa (`Time_GetByData`, `Time_Get`, `Time_Insert`, `Time_Update`, `Time_Delete`, `HorasMes_GetList`) e lê `TbClientes`. A única novidade no banco é a tabela `TbTimeGrupoEmpresa` ("Meus grupos de empresas"), criada por `preprod\2026-10-20-Grupos-de-Empresas.sql`; sem ela o botão e o campo de grupos somem e o resto funciona. Voltar atrás é só apontar o menu de volta para a tela antiga (a tabela pode ficar).
 
 ---
 
@@ -13,6 +13,11 @@ Projeto: `Grupo_Mecano` (Visual Basic, .NET Framework 4.8). A cópia de testes d
 - [ ] `UiMecano.vb` e `Colaborador.vb` (entrega de Colaboradores) já estão no projeto. Se não, incluir os dois junto com esta entrega: a tela usa `BotaoMecano`, `FormasMecano` e `Colaborador.SemAcento`.
 - [ ] `Neulis_Neue_Regular.otf` e `LOGO_PRINCIPAL_2.png` chegam ao `bin` do Gerenciador (já acontece desde a tela de login; `TemaMecano` cai para Segoe UI se a fonte faltar).
 - [ ] Na máquina de teste, `I:\Sistemas\Nibo\Clientes\Outros.txt` abre (a tela tenta também `\\mec-srv-00\Dados\Sistemas\Nibo\Clientes\Outros.txt`). Sem o arquivo ela avisa e só permite clientes.
+
+## Passo 0b — Script SQL (grupos de empresas)
+
+- [ ] No SQL Server Management Studio, conectado em `MEC-SRV-04\SQLEXPRESS`, abrir `preprod\2026-10-20-Grupos-de-Empresas.sql`, escolher o banco **Grupo_Mecano_Testes** e executar. Ele imprime "TbTimeGrupoEmpresa criada." (ou "já existia").
+- [ ] Em produção, o mesmo script no banco `Grupo_Mecano`, no passo 5.
 
 ## Passo 1 — Arquivos no projeto
 
@@ -26,9 +31,10 @@ A pasta `preprod\` tem só os sete arquivos que entram no Gerenciador, nada da d
 | `preprod\frmBancoHoras.vb` | `Cadastro\frmBancoHoras.vb` |
 | `preprod\frmApontamentoPeriodo.vb` | `Cadastro\frmApontamentoPeriodo.vb` |
 | `preprod\frmGerenciamentoTime.vb` | `Cadastro\frmGerenciamentoTime.vb` |
+| `preprod\frmGruposEmpresas.vb` | `Cadastro\frmGruposEmpresas.vb` |
 | `preprod\ModApontamento.vb` | `App_Code\ModApontamento.vb` |
 
-- [ ] Incluir os sete no `Grupo_Mecano.vbproj` (Adicionar › Item existente). São classes criadas por código, **sem Designer e sem .resx**.
+- [ ] Incluir os oito no `Grupo_Mecano.vbproj` (Adicionar › Item existente). São classes criadas por código, **sem Designer e sem .resx**.
 - [ ] **Não** incluir `ModApontamentoDemo.vb`, `DemoMain.vb` nem os `.txt`: são só da demonstração.
 
 ## Passo 2 — Menu (`Base\frmMain.vb`)
@@ -172,6 +178,15 @@ Fazer com um **usuário comum** (não gestor) e depois com um **gestor**. Em cad
 - [ ] 3 empresas, 2 h, dividir: 0,67 + 0,67 + 0,66 (soma 2,00). A tela mostra "cerca de 0h40 para cada uma".
 - [ ] 20 empresas, 5 min, dividir: recusado ("algumas ficariam com zero").
 
+**Meus grupos de empresas**
+- [ ] Botão "Meus grupos" na barra da lista abre a janela. Criar um grupo com 3 empresas e gravar: na TbTimeGrupoEmpresa aparecem 3 linhas com o USUARIOID da pessoa.
+- [ ] Renomear o grupo e gravar: as linhas trocam de nome, sem duplicar. Tirar uma empresa e gravar: fica com 2 linhas.
+- [ ] "Novo apontamento" › "Lançar para várias empresas": o campo Grupo lista o grupo; escolher passa as empresas para a direita. Gravar 1 h "para cada": uma linha por empresa na TbTime.
+- [ ] Com empresas selecionadas, "Meus grupos…" abre já com elas num grupo novo.
+- [ ] Excluir o grupo: some do campo Grupo e da tabela.
+- [ ] Com outro usuário, os grupos do primeiro não aparecem.
+- [ ] (Opcional) Apagar a tabela num banco de teste: o botão e o campo somem, o resto funciona.
+
 **Trava de 10 h**
 - [ ] Num dia com 8 h, lançar mais 1 h: o subtítulo fica vermelho ("acima de 8h00"), grava, e aparece a mensagem "Hoje ficou com 9h00, acima de 8h00". A linha está na TbTime.
 - [ ] No mesmo dia (9 h), lançar 3 h: recusado, "cabem mais 1h00".
@@ -214,13 +229,14 @@ Em cada comparação, usar o mesmo período nas duas telas. A tela nova mostra h
 
 Só depois do roteiro acima aprovado em pré-produção e das decisões em aberto respondidas (ver README).
 
+- [ ] Rodar `preprod\2026-10-20-Grupos-de-Empresas.sql` no banco `Grupo_Mecano`.
 - [ ] Repetir os passos 1 a 3 no projeto de produção (`Grupo_Mecano\Grupo_Mecano\`).
 - [ ] Publicar o Gerenciador como de costume.
 - [ ] Avisar a equipe: nova tela, aviso acima de 8 h, teto de 10 h por dia.
 
 ## Voltar atrás
 
-Sem nada no banco, voltar é trocar o menu de volta para `New frmTimeDet(0)…Show()` e `frmTime`. Os lançamentos feitos pela tela nova são linhas comuns da `TbTime` e continuam aparecendo nas telas antigas e nos relatórios.
+Voltar é trocar o menu de volta para `New frmTimeDet(0)…Show()` e `frmTime`. Os lançamentos feitos pela tela nova são linhas comuns da `TbTime` e continuam aparecendo nas telas antigas e nos relatórios.
 
 ## Depois (não bloqueia a pré-produção)
 

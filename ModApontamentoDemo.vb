@@ -213,6 +213,66 @@ Public Module ModApontamento
         Return lista.OrderBy(Function(l) l.Usuario).ToList()
     End Function
 
+    ' ------------------------------------------------------------ meus grupos de empresas (grupos.txt: USUARIOID|GRUPO|EMPRESAID)
+    Private ReadOnly _arqGrupos As String = Path.Combine(PastaDados(), "grupos.txt")
+    Private _grupos As List(Of GrupoEmpresas) = Nothing
+
+    Public Function GruposDisponiveis() As Boolean
+        Return True
+    End Function
+
+    Private Sub CarregarGrupos()
+        If _grupos IsNot Nothing Then Return
+        _grupos = New List(Of GrupoEmpresas)()
+        If Not File.Exists(_arqGrupos) Then Return
+        For Each linha In File.ReadAllLines(_arqGrupos, Encoding.UTF8).Skip(1)
+            Dim p = linha.Split("|"c)
+            If p.Length < 3 OrElse p(0).Trim() = "" Then Continue For
+            Dim uid As Integer
+            If Not Integer.TryParse(p(0), uid) Then Continue For
+            Dim nome = p(1).Trim()
+            Dim g = _grupos.FirstOrDefault(Function(x) x.UsuarioId = uid AndAlso x.Nome = nome)
+            If g Is Nothing Then
+                g = New GrupoEmpresas With {.UsuarioId = uid, .Nome = nome}
+                _grupos.Add(g)
+            End If
+            g.Codigos.Add(p(2).Trim())
+        Next
+    End Sub
+
+    Private Sub SalvarGrupos()
+        Dim sb As New StringBuilder()
+        sb.AppendLine("USUARIOID|GRUPO|EMPRESAID")
+        For Each g In _grupos.OrderBy(Function(x) x.UsuarioId).ThenBy(Function(x) x.Nome)
+            For Each c In g.Codigos
+                sb.AppendLine(g.UsuarioId & "|" & g.Nome.Replace("|", " ") & "|" & c)
+            Next
+        Next
+        File.WriteAllText(_arqGrupos, sb.ToString(), New UTF8Encoding(False))
+    End Sub
+
+    Public Function Grupos() As List(Of GrupoEmpresas)
+        CarregarGrupos()
+        Return _grupos.Where(Function(g) g.UsuarioId = Usersys).OrderBy(Function(g) g.Nome).Select(Function(g) g.Clonar()).ToList()
+    End Function
+
+    Public Sub SalvarGrupo(g As GrupoEmpresas, Optional nomeAnterior As String = "")
+        CarregarGrupos()
+        _grupos.RemoveAll(Function(x) x.UsuarioId = Usersys AndAlso (String.Equals(x.Nome, g.Nome, StringComparison.OrdinalIgnoreCase) OrElse
+                                                                    (nomeAnterior <> "" AndAlso String.Equals(x.Nome, nomeAnterior, StringComparison.OrdinalIgnoreCase))))
+        Dim novo = g.Clonar()
+        novo.UsuarioId = Usersys
+        novo.Codigos = novo.Codigos.Select(Function(c) c.Trim()).Where(Function(c) c <> "").Distinct().ToList()
+        _grupos.Add(novo)
+        SalvarGrupos()
+    End Sub
+
+    Public Sub ExcluirGrupo(nome As String)
+        CarregarGrupos()
+        _grupos.RemoveAll(Function(x) x.UsuarioId = Usersys AndAlso String.Equals(x.Nome, nome, StringComparison.OrdinalIgnoreCase))
+        SalvarGrupos()
+    End Sub
+
     Public Function ListarDesde(de As Date) As List(Of Apontamento)
         Return Listar(de, Date.Today)
     End Function
@@ -287,6 +347,7 @@ Public Module ModApontamento
         _clientes = Nothing
         _metas = Nothing
         _cache = Nothing
+        _grupos = Nothing
     End Sub
 
     Public Function AtividadesInternas() As List(Of String)

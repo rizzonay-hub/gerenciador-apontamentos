@@ -504,6 +504,84 @@ Public Module ModApontamento
         Return lista.OrderBy(Function(l) l.Usuario).ToList()
     End Function
 
+    ' ------------------------------------------------------------ meus grupos de empresas (TbTimeGrupoEmpresa)
+    Private _gruposDisponiveis As Boolean? = Nothing
+
+    '''<summary>True quando a TbTimeGrupoEmpresa existe (script 2026-10-20 rodado). Sem ela, as telas escondem os grupos e nada quebra.</summary>
+    Public Function GruposDisponiveis() As Boolean
+        If _gruposDisponiveis.HasValue Then Return _gruposDisponiveis.Value
+        Try
+            Using cn As New SqlConnection(ConnString)
+                cn.Open()
+                Using cmd As New SqlCommand("SELECT CASE WHEN OBJECT_ID('dbo.TbTimeGrupoEmpresa', 'U') IS NULL THEN 0 ELSE 1 END", cn)
+                    _gruposDisponiveis = (Convert.ToInt32(cmd.ExecuteScalar()) = 1)
+                End Using
+            End Using
+        Catch
+            _gruposDisponiveis = False
+        End Try
+        Return _gruposDisponiveis.Value
+    End Function
+
+    '''<summary>Grupos da pessoa logada, com os códigos de empresa de cada um.</summary>
+    Public Function Grupos() As List(Of GrupoEmpresas)
+        Dim lista As New List(Of GrupoEmpresas)()
+        If Not GruposDisponiveis() Then Return lista
+        Using cn As New SqlConnection(ConnString)
+            cn.Open()
+            Using cmd As New SqlCommand("SELECT RTRIM(GRUPO) AS GRUPO, RTRIM(EMPRESAID) AS EMPRESAID FROM dbo.TbTimeGrupoEmpresa WHERE USUARIOID = @u ORDER BY GRUPO, EMPRESAID", cn) With {.CommandTimeout = 60}
+                cmd.Parameters.Add("@u", SqlDbType.Int).Value = Usersys
+                Using rd = cmd.ExecuteReader()
+                    Dim atual As GrupoEmpresas = Nothing
+                    While rd.Read()
+                        Dim nome = Texto(rd("GRUPO"))
+                        If atual Is Nothing OrElse atual.Nome <> nome Then
+                            atual = New GrupoEmpresas With {.UsuarioId = Usersys, .Nome = nome}
+                            lista.Add(atual)
+                        End If
+                        atual.Codigos.Add(Texto(rd("EMPRESAID")))
+                    End While
+                End Using
+            End Using
+        End Using
+        Return lista
+    End Function
+
+    '''<summary>Grava (ou regrava) um grupo da pessoa logada: apaga as linhas do nome antigo e do novo e insere as empresas, numa transação.</summary>
+    Public Sub SalvarGrupo(g As GrupoEmpresas, Optional nomeAnterior As String = "")
+        Using cn As New SqlConnection(ConnString)
+            cn.Open()
+            Using tr = cn.BeginTransaction()
+                Using cmd As New SqlCommand("DELETE FROM dbo.TbTimeGrupoEmpresa WHERE USUARIOID = @u AND (GRUPO = @g OR GRUPO = @ant)", cn, tr)
+                    cmd.Parameters.Add("@u", SqlDbType.Int).Value = Usersys
+                    cmd.Parameters.Add("@g", SqlDbType.NVarChar, GrupoEmpresas.TAMANHO_NOME).Value = Cortar(g.Nome, GrupoEmpresas.TAMANHO_NOME)
+                    cmd.Parameters.Add("@ant", SqlDbType.NVarChar, GrupoEmpresas.TAMANHO_NOME).Value = If(nomeAnterior = "", g.Nome, Cortar(nomeAnterior, GrupoEmpresas.TAMANHO_NOME))
+                    cmd.ExecuteNonQuery()
+                End Using
+                For Each codigo In g.Codigos.Select(Function(c) c.Trim()).Where(Function(c) c <> "").Distinct()
+                    Using cmd As New SqlCommand("INSERT INTO dbo.TbTimeGrupoEmpresa (USUARIOID, GRUPO, EMPRESAID) VALUES (@u, @g, @e)", cn, tr)
+                        cmd.Parameters.Add("@u", SqlDbType.Int).Value = Usersys
+                        cmd.Parameters.Add("@g", SqlDbType.NVarChar, GrupoEmpresas.TAMANHO_NOME).Value = Cortar(g.Nome, GrupoEmpresas.TAMANHO_NOME)
+                        cmd.Parameters.Add("@e", SqlDbType.NVarChar, 7).Value = Cortar(codigo, 7)
+                        cmd.ExecuteNonQuery()
+                    End Using
+                Next
+                tr.Commit()
+            End Using
+        End Using
+    End Sub
+
+    Public Sub ExcluirGrupo(nome As String)
+        Using cn As New SqlConnection(ConnString)
+            cn.Open()
+            Using cmd As New SqlCommand("DELETE FROM dbo.TbTimeGrupoEmpresa WHERE USUARIOID = @u AND GRUPO = @g", cn)
+                cmd.Parameters.Add("@u", SqlDbType.Int).Value = Usersys
+                cmd.Parameters.Add("@g", SqlDbType.NVarChar, GrupoEmpresas.TAMANHO_NOME).Value = Cortar(nome, GrupoEmpresas.TAMANHO_NOME)
+                cmd.ExecuteNonQuery()
+            End Using
+        End Using
+    End Sub
+
     ''' <summary>Atividades internas do Outros.txt; sem "administrativo" para quem não é gestor/diretoria.</summary>
     Public Function AtividadesInternas() As List(Of String)
         Dim linhas As New List(Of String)()

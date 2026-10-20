@@ -9,7 +9,7 @@ Tela nova de **apontamento de horas** (o "Time") para o Gerenciador Mêcano, no 
 | **Aviso acima de 8h00** | Quem passa de 8h00 num dia é avisado na própria tela (subtítulo em vermelho e uma mensagem ao gravar), mas grava. |
 | **Banco de horas (adiado)** | O cartão fica na tela sem número. A conta do que passa de 8h00 está pronta, desligada por uma chave (`BancoHoras.ATIVO`), para não confundir com o banco do sistema de ponto. |
 
-**Banco de dados: nada muda.** A tela grava na `TbTime` com as mesmas procedures de hoje. Não há tabela nova nem script SQL nesta entrega.
+**Banco de dados: só uma tabela nova.** A tela grava na `TbTime` com as mesmas procedures de hoje. A única novidade é a `TbTimeGrupoEmpresa` dos grupos de empresas (script em `preprod\`); sem ela tudo o mais funciona.
 
 Estado em 16/10/2026: pronta para **pré-produção** (banco `Grupo_Mecano_Testes`). Passo a passo em [IMPLANTACAO.md](IMPLANTACAO.md).
 
@@ -47,7 +47,17 @@ Marque **"Lançar para várias empresas"**, passe as empresas para a lista da di
 - **Cada empresa fica com o tempo inteiro** — 2 h em 4 empresas = 8 h no dia (o comportamento do Time de hoje; é o padrão).
 - **Dividir o tempo entre as empresas** — 2 h em 4 empresas = 0h30 para cada uma, 2 h no dia.
 
+Em cima das listas há o campo **Grupo**: escolha um dos seus grupos e as empresas dele passam para a direita de uma vez. **Meus grupos…** abre a janela para montar os grupos (se já houver empresas selecionadas, ela abre com um grupo novo já preenchido).
+
 As duas frases mostram os números reais assim que você informa o tempo e as empresas. A divisão é feita em centésimos de hora, a unidade que o Time grava, para a soma fechar exata (2 h em 3 empresas = 0,67 + 0,67 + 0,66). Se o tempo for pequeno demais para dividir, a tela avisa e não grava.
+
+### Meus grupos de empresas
+
+![Meus grupos](capturas/03c-meus-grupos.png)
+
+Cada pessoa monta quantos grupos quiser ("Minha carteira", "Fechamento do mês"…): um nome e as empresas, com a mesma busca e as mesmas setas do lançamento. O botão **Meus grupos** na barra da lista abre a janela; no lançamento com várias empresas, o campo **Grupo** usa o que foi montado. Os grupos são de quem os criou; ninguém vê os dos outros.
+
+É a única parte da entrega que mexe no banco: uma tabela nova, `TbTimeGrupoEmpresa`, criada pelo script `preprod\2026-10-20-Grupos-de-Empresas.sql`. Sem a tabela, o botão e o campo somem e o resto funciona igual.
 
 ### Aviso de 8 h e trava de 10 h
 
@@ -100,10 +110,12 @@ A pasta `preprod\` tem só o que entra no Gerenciador: os sete `.vb` abaixo, nad
 | `preprod\frmApontamentoDet.vb` | **sim** → `Grupo_Mecano\Cadastro\` | Lançamento novo / alterar; várias empresas (mesmo tempo ou rateio); trava de 10 h; gestor lança em nome de outra pessoa. |
 | `preprod\frmBancoHoras.vb` | **sim** → `Grupo_Mecano\Cadastro\` | Extrato do banco de horas (só leitura; dormente enquanto `BancoHoras.ATIVO` for False). |
 | `preprod\frmApontamentoPeriodo.vb` | **sim** → `Grupo_Mecano\Cadastro\` | "Anotações por período": férias/afastamento no nome de outra pessoa (gestor e diretoria). |
+| `preprod\frmGruposEmpresas.vb` | **sim** → `Grupo_Mecano\Cadastro\` | "Meus grupos de empresas": montar, renomear e excluir os grupos da pessoa. |
+| `preprod\2026-10-20-Grupos-de-Empresas.sql` | **sim** → rodar no banco | Cria a `TbTimeGrupoEmpresa` (pode rodar mais de uma vez). |
 | `preprod\frmGerenciamentoTime.vb` | **sim** → `Grupo_Mecano\Cadastro\` | "Gerenciamento do Time": as quatro consultas de gestão em abas (Analítica, Sintética, Por funcionário, Por usuário e data), só leitura, com exportação (gestor e diretoria). |
 | `ModApontamentoDemo.vb` | não | Versão da camada de dados que lê e grava em txt, para a demonstração. Mesmos membros públicos do `ModApontamento`. |
 | `DemoMain.vb`, `build-demo.rsp`, `Compilar-Demo.bat` | não | Ponto de entrada e compilação da demo com o `vbc` do .NET 4.8, sem Visual Studio. |
-| `clientes.txt`, `colaboradores.txt`, `outros.txt`, `horasmes.txt` | não | Dados da demo. Empresas e colaboradores **fictícios**; atividades e metas mensais reais. |
+| `clientes.txt`, `colaboradores.txt`, `outros.txt`, `horasmes.txt`, `grupos.txt` | não | Dados da demo. Empresas e colaboradores **fictícios**; atividades e metas mensais reais. |
 | `apontamentos.txt` | não (fora do Git) | Lançamentos da demo, gerados na primeira abertura em volta da data de hoje. Apague para recomeçar. |
 | `capturas\*.png` | não | Telas em 150 % de DPI, geradas por `GM-Apontamentos-Demo.exe /captura <pasta>`. |
 | `LEIA-ME.md` | não | Documentação técnica detalhada: regras, decisões, o que saiu, o que falta decidir. |

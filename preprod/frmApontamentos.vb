@@ -76,6 +76,7 @@ Public Class frmApontamentos
     Private btnExcluir As BotaoMecano
     Private btnPeriodo As BotaoMecano          ' gestão: "Anotações por período" (só gestor e diretoria)
     Private btnGerenciamento As BotaoMecano    ' gestão: as consultas do menu Gerenciamento
+    Private btnGrupos As BotaoMecano           ' "Meus grupos de empresas" (todo mundo; some se a tabela não existir)
     Private pnlResumo As PainelResumoHoras
     Private grade As DataGridView
     Private lblVazio As Label
@@ -238,7 +239,18 @@ Public Class frmApontamentos
         btnGerenciamento.Visible = gestor
         AddHandler btnGerenciamento.Click, Sub() frmGerenciamentoTime.Abrir()
 
-        pnlToolbar.Controls.AddRange(New Control() {cboPeriodo, dtpDe, lblAte, dtpAte, txtBusca, btnGerenciamento, btnPeriodo, btnExcluir, btnExportar, btnNovo})
+        btnGrupos = BotaoMecano.Secundario("Meus grupos", Esc(116), altura)
+        btnGrupos.Anchor = AnchorStyles.Top Or AnchorStyles.Right
+        btnGrupos.Top = y
+        btnGrupos.Visible = ModApontamento.GruposDisponiveis()
+        AddHandler btnGrupos.Click, Sub()
+                                        Using f As New frmGruposEmpresas()
+                                            f.ShowDialog(Me)
+                                            If f.Alterou Then MostrarMensagem("Grupos de empresas atualizados.")
+                                        End Using
+                                    End Sub
+
+        pnlToolbar.Controls.AddRange(New Control() {cboPeriodo, dtpDe, lblAte, dtpAte, txtBusca, btnGrupos, btnGerenciamento, btnPeriodo, btnExcluir, btnExportar, btnNovo})
         AddHandler pnlToolbar.Resize, Sub() PosicionarAcoes()
         PosicionarFiltros()
         PosicionarAcoes()
@@ -264,11 +276,12 @@ Public Class frmApontamentos
         Dim larguraAcoes = btnNovo.Width + Esc(8) + btnExportar.Width + Esc(8) + btnExcluir.Width
         If btnPeriodo.Visible Then larguraAcoes += Esc(8) + btnPeriodo.Width
         If btnGerenciamento.Visible Then larguraAcoes += Esc(8) + btnGerenciamento.Width
+        If btnGrupos.Visible Then larguraAcoes += Esc(8) + btnGrupos.Width
         Dim segundaLinha = (direita - larguraAcoes) < txtBusca.Right + Esc(16)
         Dim topo = If(segundaLinha, y + Esc(44), y)
         Dim altura = If(segundaLinha, Esc(62 + 44), Esc(62))
         If pnlToolbar.Height <> altura Then pnlToolbar.Height = altura
-        btnNovo.Top = topo : btnExportar.Top = topo : btnExcluir.Top = topo : btnPeriodo.Top = topo : btnGerenciamento.Top = topo
+        btnNovo.Top = topo : btnExportar.Top = topo : btnExcluir.Top = topo : btnPeriodo.Top = topo : btnGerenciamento.Top = topo : btnGrupos.Top = topo
         btnNovo.Left = direita - btnNovo.Width
         btnExportar.Left = btnNovo.Left - Esc(8) - btnExportar.Width
         btnExcluir.Left = btnExportar.Left - Esc(8) - btnExcluir.Width
@@ -277,7 +290,11 @@ Public Class frmApontamentos
             btnPeriodo.Left = x - Esc(8) - btnPeriodo.Width
             x = btnPeriodo.Left
         End If
-        If btnGerenciamento.Visible Then btnGerenciamento.Left = x - Esc(8) - btnGerenciamento.Width
+        If btnGerenciamento.Visible Then
+            btnGerenciamento.Left = x - Esc(8) - btnGerenciamento.Width
+            x = btnGerenciamento.Left
+        End If
+        If btnGrupos.Visible Then btnGrupos.Left = x - Esc(8) - btnGrupos.Width
     End Sub
 
     ''' <summary>"Anotações por período": férias/afastamento no nome de outra pessoa (só gestor e diretoria).</summary>

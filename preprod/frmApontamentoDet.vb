@@ -92,6 +92,9 @@ Public Class frmApontamentoDet
     Private lblContagemSel As Label
     Private rbMesmoTempo As RadioButton      ' o tempo informado vale para cada empresa (como o Time de hoje)
     Private rbDividir As RadioButton         ' o tempo informado é dividido por igual entre as empresas
+    Private cboGrupo As ComboBox             ' "Meus grupos": marca de uma vez as empresas do grupo escolhido
+    Private btnGrupos As BotaoMecano         ' abre a janela de montar os grupos
+    Private _grupos As New List(Of GrupoEmpresas)()
     Private dtpData As DateTimePicker
     Private numHoras As NumericUpDown
     Private numMinutos As NumericUpDown
@@ -108,7 +111,7 @@ Public Class frmApontamentoDet
     Private Const SEC_W As Integer = 732
     Private Const ALT_TOPO As Integer = 88
     Private Const ALT_OQUE_BASE As Integer = 164
-    Private Const ALT_VARIAS As Integer = 352
+    Private Const ALT_VARIAS As Integer = 388
     Private Const ALT_QUANDO As Integer = 184
     Private Const ALT_RODAPE As Integer = 64
     Private Const EM_SETCUEBANNER As Integer = &H1501
@@ -492,6 +495,88 @@ Public Class frmApontamentoDet
         AddHandler rbDividir.CheckedChanged, Sub() AtualizarEquivale()
 
         pnlVarias.Controls.AddRange(New Control() {lblDisp, txtFiltro, lstDisponiveis, chkTodasDisp, btnUm, btnTodos, btnVoltaUm, btnVoltaTodos, lblSel, lblContagemSel, lstSelecionadas, chkTodasSel, lblModo, rbMesmoTempo, rbDividir})
+
+        ' "Meus grupos": uma linha acima das listas; tudo o que já existe desce para abrir espaço
+        Dim dy = Esc(36)
+        For Each c As Control In pnlVarias.Controls
+            c.Top += dy
+        Next
+        Dim lblGrupo = New Label With {.Text = "Grupo", .AutoSize = True, .Left = 0, .Top = Esc(6), .ForeColor = TemaMecano.CinzaEscuro, .Font = TemaMecano.FonteCorpo(9.0F, FontStyle.Bold)}
+        cboGrupo = New ComboBox With {.Left = Esc(56), .Top = Esc(2), .Width = Esc(314), .DropDownStyle = ComboBoxStyle.DropDownList,
+                                      .Font = TemaMecano.FonteCorpo(9.5F), .FlatStyle = FlatStyle.System, .DropDownHeight = Esc(260)}
+        AddHandler cboGrupo.SelectedIndexChanged, Sub() If Not _carregando Then AplicarGrupo()
+        btnGrupos = BotaoMecano.Secundario("Meus grupos…", Esc(150), Esc(28))
+        btnGrupos.Left = Esc(386) : btnGrupos.Top = Esc(1)
+        btnGrupos.TabStop = False
+        AddHandler btnGrupos.Click, Sub() AbrirGrupos()
+        pnlVarias.Controls.AddRange(New Control() {lblGrupo, cboGrupo, btnGrupos})
+    End Sub
+
+    '''<summary>Preenche a lista de grupos da pessoa (ou esconde a linha quando a tabela ainda não existe).</summary>
+    Private Sub PreencherGrupos(selecionar As String)
+        Dim disponivel = ModApontamento.GruposDisponiveis()
+        cboGrupo.Visible = disponivel
+        btnGrupos.Visible = disponivel
+        For Each c As Control In pnlVarias.Controls
+            If TypeOf c Is Label AndAlso DirectCast(c, Label).Text = "Grupo" Then c.Visible = disponivel
+        Next
+        If Not disponivel Then Return
+        Try
+            _grupos = ModApontamento.Grupos()
+        Catch
+            _grupos = New List(Of GrupoEmpresas)()
+        End Try
+        Dim antes = _carregando
+        _carregando = True
+        cboGrupo.BeginUpdate()
+        cboGrupo.Items.Clear()
+        cboGrupo.Items.Add(If(_grupos.Count = 0, "Nenhum grupo ainda: clique em Meus grupos…", "Escolha um grupo para marcar as empresas"))
+        For Each g In _grupos
+            cboGrupo.Items.Add(g)
+        Next
+        cboGrupo.EndUpdate()
+        cboGrupo.SelectedIndex = 0
+        If selecionar <> "" Then
+            For i = 1 To cboGrupo.Items.Count - 1
+                If String.Equals(DirectCast(cboGrupo.Items(i), GrupoEmpresas).Nome, selecionar, StringComparison.OrdinalIgnoreCase) Then cboGrupo.SelectedIndex = i
+            Next
+        End If
+        _carregando = antes
+    End Sub
+
+    '''<summary>Passa as empresas do grupo escolhido para a lista da direita (as que já estavam lá ficam).</summary>
+    Private Sub AplicarGrupo()
+        Dim g = TryCast(cboGrupo.SelectedItem, GrupoEmpresas)
+        If g Is Nothing Then Return
+        Dim empresas = g.Empresas(_clientes.Where(Function(c) c.Ativo))
+        For Each c In empresas
+            _disponiveis.Remove(c)
+            If Not _selecionados.Contains(c) Then _selecionados.Add(c)
+        Next
+        PreencherDisponiveis()
+        PreencherSelecionadas()
+        If empresas.Count = 0 Then
+            lblContagemSel.Text = "Esse grupo não tem empresa ativa."
+        End If
+    End Sub
+
+    '''<summary>Abre "Meus grupos"; se há empresas selecionadas, já entra como um grupo novo com elas.</summary>
+    Private Sub AbrirGrupos()
+        Dim iniciais = If(_selecionados.Count > 0, _selecionados.Select(Function(c) c.Tradutor).ToList(), Nothing)
+        Using f As New frmGruposEmpresas(iniciais)
+            f.ShowDialog(Me)
+            If f.Alterou Then PreencherGrupos(f.UltimoGravado)
+        End Using
+    End Sub
+
+    '''<summary>Só para a captura de tela e testes: escolhe um grupo pelo nome.</summary>
+    Public Sub EscolherGrupo(nome As String)
+        For i = 1 To cboGrupo.Items.Count - 1
+            If String.Equals(DirectCast(cboGrupo.Items(i), GrupoEmpresas).Nome, nome, StringComparison.OrdinalIgnoreCase) Then
+                cboGrupo.SelectedIndex = i
+                Return
+            End If
+        Next
     End Sub
 
     ''' <summary>True quando a caixa "várias empresas" está marcada e o tempo deve ser dividido entre elas.</summary>
@@ -812,7 +897,8 @@ Public Class frmApontamentoDet
             txtFiltro.Text = ""
             PreencherDisponiveis()
             PreencherSelecionadas()
-            txtFiltro.Focus()
+            PreencherGrupos("")
+            If cboGrupo.Visible AndAlso _grupos.Count > 0 Then cboGrupo.Focus() Else txtFiltro.Focus()
         End If
     End Sub
 

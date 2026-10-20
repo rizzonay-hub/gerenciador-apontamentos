@@ -1,5 +1,13 @@
 # Histórico — Apontamentos de horas
 
+## 20/10/2026 — Meus grupos de empresas
+
+**Novo**
+- **Grupos de empresas por pessoa** (`frmGruposEmpresas`, `GrupoEmpresas`): quantos grupos quiser, cada um com nome e empresas; montar, renomear e excluir. Botão "Meus grupos" na barra da lista.
+- No lançamento com várias empresas, o campo **Grupo** passa as empresas do grupo para a direita de uma vez; "Meus grupos…" abre a janela já com as empresas selecionadas como grupo novo.
+- **Primeiro script SQL da entrega**: `preprod\2026-10-20-Grupos-de-Empresas.sql` cria a `TbTimeGrupoEmpresa` (USUARIOID, GRUPO, EMPRESAID). `ModApontamento.GruposDisponiveis` checa a tabela; sem ela, botão e campo somem e nada quebra.
+- Demo: `grupos.txt` com dois grupos fictícios; captura `03c-meus-grupos.png`; teste sem interface.
+
 ## 19/10/2026 — decisões da diretoria
 
 **Novo**

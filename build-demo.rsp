@@ -20,4 +20,5 @@ preprod\frmApontamentoDet.vb
 preprod\frmBancoHoras.vb
 preprod\frmApontamentoPeriodo.vb
 preprod\frmGerenciamentoTime.vb
+preprod\frmGruposEmpresas.vb
 DemoMain.vb
