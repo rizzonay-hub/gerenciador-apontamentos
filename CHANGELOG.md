@@ -2,6 +2,9 @@
 
 ## 20/10/2026 — Meus grupos de empresas
 
+**Corrigido**
+- Barra de ações da lista em janela estreita: os botões agora descem para quantas linhas a largura pedir, sem sobrepor uns aos outros nem a busca, e a linha divisória acompanha a altura nova (antes ficava desenhada no lugar antigo, cruzando os botões).
+
 **Novo**
 - **Grupos de empresas por pessoa** (`frmGruposEmpresas`, `GrupoEmpresas`): quantos grupos quiser, cada um com nome e empresas; montar, renomear e excluir. Botão "Meus grupos" na barra da lista.
 - No lançamento com várias empresas, o campo **Grupo** passa as empresas do grupo para a direita de uma vez; "Meus grupos…" abre a janela já com as empresas selecionadas como grupo novo.

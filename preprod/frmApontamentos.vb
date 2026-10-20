@@ -269,32 +269,42 @@ Public Class frmApontamentos
         PosicionarAcoes()
     End Sub
 
+    '''<summary>
+    ''' Botões de ação da direita para a esquerda, em quantas linhas a largura pedir: na primeira linha,
+    ''' ao lado dos filtros; se não couber, descem para linhas inteiras (janela estreita, DPI alto, tela
+    ''' principal com a barra lateral). A barra cresce 44 por linha a mais.
+    ''' </summary>
     Private Sub PosicionarAcoes()
         Dim direita = pnlToolbar.Width - Esc(24)
         Dim y = Esc(14)
-        ' janela estreita (embutida na tela principal, DPI alto): as ações descem para uma segunda linha
-        Dim larguraAcoes = btnNovo.Width + Esc(8) + btnExportar.Width + Esc(8) + btnExcluir.Width
-        If btnPeriodo.Visible Then larguraAcoes += Esc(8) + btnPeriodo.Width
-        If btnGerenciamento.Visible Then larguraAcoes += Esc(8) + btnGerenciamento.Width
-        If btnGrupos.Visible Then larguraAcoes += Esc(8) + btnGrupos.Width
-        Dim segundaLinha = (direita - larguraAcoes) < txtBusca.Right + Esc(16)
-        Dim topo = If(segundaLinha, y + Esc(44), y)
-        Dim altura = If(segundaLinha, Esc(62 + 44), Esc(62))
+        Dim passo = Esc(44)
+        Dim espaco = Esc(8)
+        ' ordem em que aparecem, da direita para a esquerda
+        Dim botoes = New BotaoMecano() {btnNovo, btnExportar, btnExcluir, btnPeriodo, btnGerenciamento, btnGrupos}.Where(Function(b) b.Visible).ToList()
+
+        Dim linha = 0
+        Dim x = direita
+        Dim limiteEsquerdo = txtBusca.Right + Esc(16)   ' na primeira linha os filtros ocupam a esquerda
+        For Each b In botoes
+            If x - b.Width < limiteEsquerdo AndAlso x < direita Then
+                ' não cabe nesta linha: começa outra, inteira
+                linha += 1
+                x = direita
+                limiteEsquerdo = Esc(24)
+            ElseIf x - b.Width < limiteEsquerdo AndAlso linha = 0 Then
+                ' nem o primeiro cabe ao lado dos filtros: começa já na segunda linha
+                linha = 1
+                x = direita
+                limiteEsquerdo = Esc(24)
+            End If
+            b.Left = x - b.Width
+            b.Top = y + linha * passo
+            x = b.Left - espaco
+        Next
+
+        Dim altura = Esc(62) + linha * passo
         If pnlToolbar.Height <> altura Then pnlToolbar.Height = altura
-        btnNovo.Top = topo : btnExportar.Top = topo : btnExcluir.Top = topo : btnPeriodo.Top = topo : btnGerenciamento.Top = topo : btnGrupos.Top = topo
-        btnNovo.Left = direita - btnNovo.Width
-        btnExportar.Left = btnNovo.Left - Esc(8) - btnExportar.Width
-        btnExcluir.Left = btnExportar.Left - Esc(8) - btnExcluir.Width
-        Dim x = btnExcluir.Left
-        If btnPeriodo.Visible Then
-            btnPeriodo.Left = x - Esc(8) - btnPeriodo.Width
-            x = btnPeriodo.Left
-        End If
-        If btnGerenciamento.Visible Then
-            btnGerenciamento.Left = x - Esc(8) - btnGerenciamento.Width
-            x = btnGerenciamento.Left
-        End If
-        If btnGrupos.Visible Then btnGrupos.Left = x - Esc(8) - btnGrupos.Width
+        pnlToolbar.Invalidate()   ' a linha divisória acompanha a altura nova (sem isso a antiga fica desenhada)
     End Sub
 
     ''' <summary>"Anotações por período": férias/afastamento no nome de outra pessoa (só gestor e diretoria).</summary>
