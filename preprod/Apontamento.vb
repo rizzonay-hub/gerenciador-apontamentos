@@ -293,6 +293,11 @@ Public Class BancoHoras
     ''' <summary>Teto de apontamento por dia. Acima disso a tela não grava.</summary>
     Public Const LIMITE_DIA As Decimal = 10D
     ''' <summary>
+    ''' Trava de 10 h DESLIGADA (decisão dos usuários, 23/10/2026): acima de 10h00 a tela avisa a pessoa e o gestor,
+    ''' mas grava. Com True volta a recusar como antes.
+    ''' </summary>
+    Public Const TRAVA_ATIVA As Boolean = False
+    ''' <summary>
     ''' Banco de horas ADIADO (decisão de 19/10/2026): a equipe confundiria com o banco oficial do sistema de ponto.
     ''' Com False, o cartão fica na tela sem número, o clique não abre o extrato e a janela de lançamento avisa
     ''' "acima de 8h00" em vez de "no banco". A trava de 10 h continua. Para ligar, basta trocar para True.
@@ -734,5 +739,78 @@ Public Class GrupoEmpresas
     Public Function Empresas(clientes As IEnumerable(Of ClienteResumo)) As List(Of ClienteResumo)
         Dim chaves = New HashSet(Of String)(Codigos.Select(Function(c) c.Trim().TrimStart("0"c)))
         Return clientes.Where(Function(c) chaves.Contains(c.Tradutor.Trim().TrimStart("0"c))).OrderBy(Function(c) c.Nome).ToList()
+    End Function
+End Class
+
+''' <summary>
+''' Aviso ao gestor (TbTimeAviso, script 2026-10-23-Avisos-de-Horas.sql): uma pessoa passou de 8h00 (ou de 10h00)
+''' num dia. Uma linha por pessoa, dia e gestor; o gestor marca como visto no Gerenciamento do Time.
+''' </summary>
+Public Class AvisoHoras
+    Public Property Id As Integer
+    Public Property UsuarioId As Integer
+    Public Property Usuario As String = ""
+    Public Property Data As Date
+    ''' <summary>Total do dia depois de gravar.</summary>
+    Public Property Horas As Decimal
+    ''' <summary>8,00 ou 10,00: o limite ultrapassado.</summary>
+    Public Property Limite As Decimal
+    Public Property GestorId As Integer
+    Public Property Gestor As String = ""
+    Public Property CriadoEm As Date
+    Public Property VistoEm As Date? = Nothing
+    Public Property VistoPor As String = ""
+
+    Public ReadOnly Property Visto As Boolean
+        Get
+            Return VistoEm.HasValue
+        End Get
+    End Property
+
+    ''' <summary>"acima de 8h00" / "acima de 10h00".</summary>
+    Public ReadOnly Property LimiteTexto As String
+        Get
+            Return "acima de " & Apontamento.FormatarHoras(Limite)
+        End Get
+    End Property
+
+    ''' <summary>Qual limite o total do dia ultrapassou: 10h00 quando passa do teto, senão 8h00.</summary>
+    Public Shared Function LimitePara(horasDia As Decimal) As Decimal
+        Return If(horasDia > BancoHoras.LIMITE_DIA, BancoHoras.LIMITE_DIA, ResumoHoras.JORNADA)
+    End Function
+
+    ''' <summary>
+    ''' Quem recebe o aviso de uma pessoa, nesta ordem: os líderes das equipes dela (ids recebidos; vêm da TbEquipe quando
+    ''' existir); senão quem tem FUNCAO com "GESTOR" no mesmo DEPTO; senão a diretoria; senão qualquer gestor ativo.
+    ''' A própria pessoa e os desligados nunca entram.
+    ''' </summary>
+    Public Shared Function EscolherGestores(pessoas As IEnumerable(Of ColaboradorResumo), usuarioId As Integer, lideresIds As IEnumerable(Of Integer)) As List(Of ColaboradorResumo)
+        Dim ativos = pessoas.Where(Function(c) Not c.Desligado AndAlso c.Id <> usuarioId).ToList()
+        Dim eu = pessoas.FirstOrDefault(Function(c) c.Id = usuarioId)
+        Dim lista As New List(Of ColaboradorResumo)()
+        If lideresIds IsNot Nothing Then
+            For Each liderId In lideresIds.Distinct()
+                Dim l = ativos.FirstOrDefault(Function(c) c.Id = liderId)
+                If l IsNot Nothing AndAlso Not lista.Contains(l) Then lista.Add(l)
+            Next
+        End If
+        If lista.Count = 0 AndAlso eu IsNot Nothing Then
+            lista = ativos.Where(Function(c) EhGestor(c) AndAlso MesmoDepto(c.Depto, eu.Depto)).ToList()
+        End If
+        If lista.Count = 0 Then lista = ativos.Where(Function(c) EhDiretoria(c)).ToList()
+        If lista.Count = 0 Then lista = ativos.Where(Function(c) EhGestor(c)).ToList()
+        Return lista.OrderBy(Function(c) c.Nome).ToList()
+    End Function
+
+    Private Shared Function EhGestor(c As ColaboradorResumo) As Boolean
+        Return If(c.Funcao, "").ToUpperInvariant().Contains("GESTOR")
+    End Function
+
+    Private Shared Function EhDiretoria(c As ColaboradorResumo) As Boolean
+        Return If(c.Funcao, "").ToUpperInvariant().Contains("DIRETOR") OrElse If(c.Depto, "").Trim().ToUpperInvariant() = "DIRETORIA"
+    End Function
+
+    Private Shared Function MesmoDepto(a As String, b As String) As Boolean
+        Return String.Equals(If(a, "").Trim(), If(b, "").Trim(), StringComparison.OrdinalIgnoreCase)
     End Function
 End Class

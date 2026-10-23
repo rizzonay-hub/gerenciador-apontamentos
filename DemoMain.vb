@@ -174,6 +174,10 @@ Public Module DemoMain
         ger.ConsultarAgora()
         Processar(10)
         SalvarCaptura(ger, Path.Combine(pasta, "11-gerenciamento-por-usuario-data.png"))
+        ger.MostrarAba(frmGerenciamentoTime.ABA_AVISOS)
+        ger.ConsultarAgora()
+        Processar(10)
+        SalvarCaptura(ger, Path.Combine(pasta, "12-gerenciamento-avisos.png"))
         ger.Close()
 
         lista.Close()

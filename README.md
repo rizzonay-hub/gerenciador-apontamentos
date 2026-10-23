@@ -6,10 +6,10 @@ Tela nova de **apontamento de horas** (o "Time") para o Gerenciador Mêcano, no 
 |---|---|
 | **Rateio entre empresas** | Ao lançar para várias empresas, a pessoa escolhe se cada uma recebe o tempo inteiro (como hoje) ou se o tempo é **dividido por igual** entre elas. |
 | **Trava de 10 h por dia** | Ninguém grava mais de 10h00 de apontamento num dia. A tela avisa antes e recusa se passar. |
-| **Aviso acima de 8h00** | Quem passa de 8h00 num dia é avisado na própria tela (subtítulo em vermelho e uma mensagem ao gravar), mas grava. |
+| **Sem trava; aviso à pessoa e ao gestor** | Quem passa de 8h00 (ou de 10h00) num dia é avisado na tela e grava normalmente. O gestor dela recebe um aviso dentro do Gerenciador: botão "Avisos (N)" na lista e aba Avisos do Gerenciamento, com "Marcar como vistos". |
 | **Banco de horas (adiado)** | O cartão fica na tela sem número. A conta do que passa de 8h00 está pronta, desligada por uma chave (`BancoHoras.ATIVO`), para não confundir com o banco do sistema de ponto. |
 
-**Banco de dados: só uma tabela nova.** A tela grava na `TbTime` com as mesmas procedures de hoje. A única novidade é a `TbTimeGrupoEmpresa` dos grupos de empresas (script em `preprod\`); sem ela tudo o mais funciona.
+**Banco de dados: duas tabelas novas.** A tela grava na `TbTime` com as mesmas procedures de hoje. As novidades são a `TbTimeGrupoEmpresa` (grupos de empresas) e a `TbTimeAviso` (avisos ao gestor), cada uma com seu script em `preprod\`; sem elas, os botões correspondentes somem e tudo o mais funciona.
 
 Estado em 16/10/2026: pronta para **pré-produção** (banco `Grupo_Mecano_Testes`). Passo a passo em [IMPLANTACAO.md](IMPLANTACAO.md).
 
@@ -59,10 +59,13 @@ Cada pessoa monta quantos grupos quiser ("Minha carteira", "Fechamento do mês"�
 
 É a única parte da entrega que mexe no banco: uma tabela nova, `TbTimeGrupoEmpresa`, criada pelo script `preprod\2026-10-20-Grupos-de-Empresas.sql`. Sem a tabela, o botão e o campo somem e o resto funciona igual.
 
-### Aviso de 8 h e trava de 10 h
+### Acima de 8 h: aviso para você e para o seu gestor (sem trava)
 
-- Quando o que você já tem no dia mais o que está digitando passa de **8h00**, o subtítulo fica vermelho: *"Hoje: 7h00 · com este: 9h00 · acima de 8h00"*. Ao gravar, aparece a mensagem *"Hoje ficou com 9h00, acima de 8h00."* O lançamento é gravado normalmente.
-- O que você já tem no dia **mais** o que vai gravar não pode passar de **10h00**. Se passar, a tela recusa e explica: *"Você já tem 9h00 hoje. O limite é 10h00 por dia, então cabem mais 1h00."*
+- Quando o que você já tem no dia mais o que está digitando passa de **8h00**, o subtítulo fica vermelho: *"Hoje: 7h00 · com este: 9h00 · acima de 8h00"*. Acima de **10h00** o texto muda para *"passa de 10h00"*. Nada é recusado.
+- Ao gravar, aparece a mensagem *"Hoje ficou com 9h00, acima de 8h00. Seu gestor foi avisado (Ana)."* O aviso fica registrado para o gestor.
+- **Quem é o gestor**: o líder da sua equipe (cadastro de Equipes, campo Líder); se a equipe não tiver líder, quem tem função de gestor no seu departamento; senão a diretoria.
+- **Para o gestor**: botão **Avisos (N)** na barra da lista (vermelho quando há algum por ver) abre a aba **Avisos** do Gerenciamento do Time: dia, colaborador, horas no dia, limite ultrapassado, quando foi registrado, e **Marcar todos como vistos**. A diretoria vê os avisos de todos.
+- A trava de 10h00 ficou desligada por uma chave (`BancoHoras.TRAVA_ATIVA`), para o caso de a diretoria querer religar.
 
 ### Banco de horas (adiado)
 
@@ -112,10 +115,11 @@ A pasta `preprod\` tem só o que entra no Gerenciador: os sete `.vb` abaixo, nad
 | `preprod\frmApontamentoPeriodo.vb` | **sim** → `Grupo_Mecano\Cadastro\` | "Anotações por período": férias/afastamento no nome de outra pessoa (gestor e diretoria). |
 | `preprod\frmGruposEmpresas.vb` | **sim** → `Grupo_Mecano\Cadastro\` | "Meus grupos de empresas": montar, renomear e excluir os grupos da pessoa. |
 | `preprod\2026-10-20-Grupos-de-Empresas.sql` | **sim** → rodar no banco | Cria a `TbTimeGrupoEmpresa` (pode rodar mais de uma vez). |
+| `preprod\2026-10-23-Avisos-de-Horas.sql` | **sim** → rodar no banco | Cria a `TbTimeAviso` dos avisos ao gestor (pode rodar mais de uma vez). |
 | `preprod\frmGerenciamentoTime.vb` | **sim** → `Grupo_Mecano\Cadastro\` | "Gerenciamento do Time": as quatro consultas de gestão em abas (Analítica, Sintética, Por funcionário, Por usuário e data), só leitura, com exportação (gestor e diretoria). |
 | `ModApontamentoDemo.vb` | não | Versão da camada de dados que lê e grava em txt, para a demonstração. Mesmos membros públicos do `ModApontamento`. |
 | `DemoMain.vb`, `build-demo.rsp`, `Compilar-Demo.bat` | não | Ponto de entrada e compilação da demo com o `vbc` do .NET 4.8, sem Visual Studio. |
-| `clientes.txt`, `colaboradores.txt`, `outros.txt`, `horasmes.txt`, `grupos.txt` | não | Dados da demo. Empresas e colaboradores **fictícios**; atividades e metas mensais reais. |
+| `clientes.txt`, `colaboradores.txt`, `outros.txt`, `horasmes.txt`, `grupos.txt`, `avisos.txt` | não | Dados da demo. Empresas e colaboradores **fictícios**; atividades e metas mensais reais. |
 | `apontamentos.txt` | não (fora do Git) | Lançamentos da demo, gerados na primeira abertura em volta da data de hoje. Apague para recomeçar. |
 | `capturas\*.png` | não | Telas em 150 % de DPI, geradas por `GM-Apontamentos-Demo.exe /captura <pasta>`. |
 | `LEIA-ME.md` | não | Documentação técnica detalhada: regras, decisões, o que saiu, o que falta decidir. |
@@ -157,7 +161,7 @@ O que **não** foi testado ainda: a compilação dentro do projeto `Grupo_Mecano
 ### Decididas em 19/10/2026
 
 - **Banco de horas adiado**: cartão na tela sem número; a conta fica pronta e desligada (`BancoHoras.ATIVO = False`). Quando for ligado, confirmar o início (01/10/2026) e a regra do sábado (4h00).
-- **Acima de 8h00**: a pessoa é avisada na tela e grava; a trava continua em 10h00.
+- **Acima de 8h00**: a pessoa é avisada na tela e grava. **23/10/2026**: a trava de 10h00 também saiu (usuários); acima de qualquer limite avisa a pessoa e o gestor, e grava.
 - **Motivos do período**: ficam os dois de hoje. Atestado já existe como atividade interna no lançamento comum.
 - O crédito do banco **não** alimenta o "Banco de Horas (Saldos)" do RH: esse controle não é feito pelo Gerenciador.
 - **Várias empresas**: fica como está, abrindo em "cada empresa fica com o tempo inteiro"; a pessoa escolhe "dividir" quando quiser.

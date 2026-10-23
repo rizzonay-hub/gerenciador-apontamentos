@@ -202,7 +202,7 @@ Public Class frmApontamentoDet
     End Function
 
     ''' <summary>
-    ''' "Hoje: 7h00 · faltam 1h00 · com este: 9h00 · acima de 8h00" (em vermelho). Só os números da pessoa; quando passa do teto de 10 h, avisa já aqui.
+    ''' "Hoje: 7h00 · faltam 1h00 · com este: 9h00 · acima de 8h00" (em vermelho). Só os números da pessoa; acima de 10h00 o aviso muda de limite.
     ''' </summary>
     Private Function DescricaoDoDia() As String
         Dim dia = If(dtpData Is Nothing, _dataInicial, dtpData.Value.Date)
@@ -1082,6 +1082,7 @@ Public Class frmApontamentoDet
 
     ''' <summary>Trava de 10 h por dia: o que já está no dia (lido agora, do banco) mais o que vai ser gravado.</summary>
     Private Function ValidarLimiteDoDia() As Boolean
+        If Not BancoHoras.TRAVA_ATIVA Then Return True   ' 23/10/2026: sem trava; acima do limite avisa a pessoa e o gestor, mas grava
         CarregarHorasDoDia(forcar:=True)
         Dim dia = dtpData.Value.Date
         Dim novo = TotalASalvar()
@@ -1164,9 +1165,19 @@ Public Class frmApontamentoDet
                 Dim extra = BancoHoras.ExtraDoLancamento(dataLanc, _jaNoDia, totalGravado)
                 If extra > 0D Then MensagemResultado &= "  " & Apontamento.FormatarHoras(extra) & " foi para o banco de horas."
             ElseIf totalDia > ResumoHoras.JORNADA Then
-                ' aviso de 8 h (decisão de 19/10/2026): a pessoa é avisada na tela, mas grava; o teto de 10 h é a trava
+                ' acima de 8 h (ou de 10 h): a pessoa é avisada na tela e o gestor recebe o aviso (TbTimeAviso); grava normalmente
+                Dim limite = AvisoHoras.LimitePara(totalDia)
                 AvisoJornada = If(dataLanc = Date.Today, "Hoje", "O dia " & dataLanc.ToString("dd/MM")) & " ficou com " & Apontamento.FormatarHoras(totalDia) &
-                               ", acima de " & Apontamento.FormatarHoras(ResumoHoras.JORNADA) & "."
+                               ", acima de " & Apontamento.FormatarHoras(limite) & "."
+                Try
+                    Dim gestores = ModApontamento.RegistrarAviso(UsuarioAlvo(), dataLanc, totalDia, limite)
+                    If gestores.Count > 0 Then
+                        AvisoJornada &= "  " & If(OutraPessoa(), "O gestor dela foi avisado", "Seu gestor foi avisado") &
+                                        " (" & String.Join(", ", gestores.Select(Function(g) Colaborador.TitulizarNome(g.Nome).Split(" "c)(0))) & ")."
+                    End If
+                Catch
+                    AvisoJornada &= "  Não foi possível avisar o gestor."
+                End Try
                 MensagemResultado &= "  " & AvisoJornada
             End If
             ModApontamento.AposGravar()

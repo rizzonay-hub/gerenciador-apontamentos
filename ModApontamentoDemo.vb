@@ -273,6 +273,87 @@ Public Module ModApontamento
         SalvarGrupos()
     End Sub
 
+    ' ------------------------------------------------------------ avisos ao gestor (avisos.txt)
+    Private ReadOnly _arqAvisos As String = Path.Combine(PastaDados(), "avisos.txt")
+    Private _avisos As List(Of AvisoHoras) = Nothing
+
+    Public Function AvisosDisponiveis() As Boolean
+        Return True
+    End Function
+
+    Private Sub CarregarAvisos()
+        If _avisos IsNot Nothing Then Return
+        _avisos = New List(Of AvisoHoras)()
+        If Not File.Exists(_arqAvisos) Then Return
+        For Each linha In File.ReadAllLines(_arqAvisos, Encoding.UTF8).Skip(1)
+            Dim p = linha.Split("|"c)
+            If p.Length < 9 Then Continue For
+            Dim a As New AvisoHoras With {
+                .Id = CInt(p(0)), .UsuarioId = CInt(p(1)), .Usuario = p(2), .Data = Date.ParseExact(p(3), "yyyy-MM-dd", CultureInfo.InvariantCulture),
+                .Horas = Decimal.Parse(p(4), CultureInfo.InvariantCulture), .Limite = Decimal.Parse(p(5), CultureInfo.InvariantCulture),
+                .GestorId = CInt(p(6)), .Gestor = p(7), .CriadoEm = Date.ParseExact(p(8), "yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture)}
+            If p.Length >= 10 AndAlso p(9).Trim() <> "" Then a.VistoEm = Date.ParseExact(p(9), "yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture)
+            If p.Length >= 11 Then a.VistoPor = p(10)
+            _avisos.Add(a)
+        Next
+    End Sub
+
+    Private Sub SalvarAvisos()
+        Dim sb As New StringBuilder()
+        sb.AppendLine("ID|USUARIOID|USUARIO|DATA|HORAS|LIMITE|GESTORID|GESTOR|CRIADOEM|VISTOEM|VISTOPOR")
+        For Each a In _avisos.OrderBy(Function(x) x.Id)
+            sb.AppendLine(String.Join("|", New String() {a.Id.ToString(), a.UsuarioId.ToString(), a.Usuario, a.Data.ToString("yyyy-MM-dd"),
+                a.Horas.ToString("0.00", CultureInfo.InvariantCulture), a.Limite.ToString("0.00", CultureInfo.InvariantCulture), a.GestorId.ToString(), a.Gestor,
+                a.CriadoEm.ToString("yyyy-MM-dd HH:mm"), If(a.VistoEm.HasValue, a.VistoEm.Value.ToString("yyyy-MM-dd HH:mm"), ""), If(a.VistoPor, "")}))
+        Next
+        File.WriteAllText(_arqAvisos, sb.ToString(), New UTF8Encoding(False))
+    End Sub
+
+    ''' <summary>Na demo não há equipes: vale a regra por departamento (AvisoHoras.EscolherGestores).</summary>
+    Public Function GestoresDe(usuarioId As Integer) As List(Of ColaboradorResumo)
+        Return AvisoHoras.EscolherGestores(Colaboradores(), usuarioId, Nothing)
+    End Function
+
+    Public Function RegistrarAviso(usuarioId As Integer, data As Date, horasDia As Decimal, limite As Decimal) As List(Of ColaboradorResumo)
+        CarregarAvisos()
+        Dim pessoa = Colaboradores().FirstOrDefault(Function(c) c.Id = usuarioId)
+        Dim nome = If(pessoa Is Nothing, "usuário " & usuarioId, pessoa.Nome)
+        Dim gestores = GestoresDe(usuarioId)
+        For Each g In gestores
+            Dim gid = g.Id
+            Dim a = _avisos.FirstOrDefault(Function(x) x.UsuarioId = usuarioId AndAlso x.Data = data.Date AndAlso x.GestorId = gid)
+            If a Is Nothing Then
+                a = New AvisoHoras With {.Id = If(_avisos.Count = 0, 1, _avisos.Max(Function(x) x.Id) + 1), .UsuarioId = usuarioId, .Data = data.Date, .GestorId = gid}
+                _avisos.Add(a)
+            End If
+            a.Usuario = nome : a.Gestor = g.Nome : a.Horas = horasDia : a.Limite = limite
+            a.CriadoEm = Date.Now : a.VistoEm = Nothing : a.VistoPor = ""
+        Next
+        SalvarAvisos()
+        Return gestores
+    End Function
+
+    Public Function AvisosPara(de As Date, ate As Date, somenteNaoVistos As Boolean) As List(Of AvisoHoras)
+        CarregarAvisos()
+        Dim diretoria = If(UserFuncao, "").ToUpperInvariant().Trim().StartsWith("DIRETORIA")
+        Return _avisos.Where(Function(a) (diretoria OrElse a.GestorId = Usersys) AndAlso a.Data >= de.Date AndAlso a.Data <= ate.Date AndAlso (Not somenteNaoVistos OrElse Not a.Visto)).
+            OrderBy(Function(a) a.Visto).ThenByDescending(Function(a) a.Data).ThenBy(Function(a) a.Usuario).ToList()
+    End Function
+
+    Public Function AvisosNaoVistos() As Integer
+        Return AvisosPara(New Date(2000, 1, 1), Date.Today.AddDays(1), True).Count
+    End Function
+
+    Public Sub MarcarAvisoVisto(id As Integer)
+        CarregarAvisos()
+        Dim a = _avisos.FirstOrDefault(Function(x) x.Id = id)
+        If a IsNot Nothing AndAlso Not a.Visto Then
+            a.VistoEm = Date.Now
+            a.VistoPor = UsuarioLogadoNome()
+            SalvarAvisos()
+        End If
+    End Sub
+
     Public Function ListarDesde(de As Date) As List(Of Apontamento)
         Return Listar(de, Date.Today)
     End Function
@@ -348,6 +429,7 @@ Public Module ModApontamento
         _metas = Nothing
         _cache = Nothing
         _grupos = Nothing
+        _avisos = Nothing
     End Sub
 
     Public Function AtividadesInternas() As List(Of String)

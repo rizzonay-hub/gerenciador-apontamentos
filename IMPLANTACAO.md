@@ -3,7 +3,7 @@
 Servidor de banco: `MEC-SRV-04\SQLEXPRESS`. Produção = `Grupo_Mecano`. Pré-produção (teste) = `Grupo_Mecano_Testes`.
 Projeto: `Grupo_Mecano` (Visual Basic, .NET Framework 4.8). A cópia de testes do projeto está em `..\Grupo_Mecano_Testes`.
 
-**Um script SQL, só para os grupos de empresas.** A tela usa as procedures que o Time já usa (`Time_GetByData`, `Time_Get`, `Time_Insert`, `Time_Update`, `Time_Delete`, `HorasMes_GetList`) e lê `TbClientes`. A única novidade no banco é a tabela `TbTimeGrupoEmpresa` ("Meus grupos de empresas"), criada por `preprod\2026-10-20-Grupos-de-Empresas.sql`; sem ela o botão e o campo de grupos somem e o resto funciona. Voltar atrás é só apontar o menu de volta para a tela antiga (a tabela pode ficar).
+**Dois scripts SQL pequenos (grupos de empresas e avisos ao gestor).** A tela usa as procedures que o Time já usa (`Time_GetByData`, `Time_Get`, `Time_Insert`, `Time_Update`, `Time_Delete`, `HorasMes_GetList`) e lê `TbClientes`. A única novidade no banco é a tabela `TbTimeGrupoEmpresa` ("Meus grupos de empresas"), criada por `preprod\2026-10-20-Grupos-de-Empresas.sql`; sem ela o botão e o campo de grupos somem e o resto funciona. Voltar atrás é só apontar o menu de volta para a tela antiga (a tabela pode ficar).
 
 ---
 
@@ -18,6 +18,11 @@ Projeto: `Grupo_Mecano` (Visual Basic, .NET Framework 4.8). A cópia de testes d
 
 - [ ] No SQL Server Management Studio, conectado em `MEC-SRV-04\SQLEXPRESS`, abrir `preprod\2026-10-20-Grupos-de-Empresas.sql`, escolher o banco **Grupo_Mecano_Testes** e executar. Ele imprime "TbTimeGrupoEmpresa criada." (ou "já existia").
 - [ ] Em produção, o mesmo script no banco `Grupo_Mecano`, no passo 5.
+
+## Passo 0c — Script SQL (avisos ao gestor)
+
+- [ ] Da mesma forma, executar `preprod\2026-10-23-Avisos-de-Horas.sql` no **Grupo_Mecano_Testes** ("TbTimeAviso criada.").
+- [ ] Sem esse script, o botão "Avisos" e a aba Avisos ficam vazios e ninguém é avisado; o resto funciona.
 
 ## Passo 1 — Arquivos no projeto
 
@@ -187,12 +192,13 @@ Fazer com um **usuário comum** (não gestor) e depois com um **gestor**. Em cad
 - [ ] Com outro usuário, os grupos do primeiro não aparecem.
 - [ ] (Opcional) Apagar a tabela num banco de teste: o botão e o campo somem, o resto funciona.
 
-**Trava de 10 h**
-- [ ] Num dia com 8 h, lançar mais 1 h: o subtítulo fica vermelho ("acima de 8h00"), grava, e aparece a mensagem "Hoje ficou com 9h00, acima de 8h00". A linha está na TbTime.
-- [ ] No mesmo dia (9 h), lançar 3 h: recusado, "cabem mais 1h00".
-- [ ] Lançar 1 h: grava; dia em 10 h. Lançar mais 15 min: recusado, "não dá para lançar mais nesse dia".
-- [ ] Várias empresas num dia com 9 h, 4 empresas, 1 h "cada": recusado (4 h no total). Com "dividir": grava (1 h no total).
-- [ ] Editar uma linha de 1 h para 2 h num dia de 10 h: recusado.
+**Acima de 8 h e de 10 h (sem trava; aviso à pessoa e ao gestor)**
+- [ ] Com um analista: num dia com 7 h, lançar 2 h. Subtítulo em vermelho "acima de 8h00"; grava; mensagem "ficou com 9h00, acima de 8h00. Seu gestor foi avisado (Nome)". Na TbTimeAviso: uma linha (USUARIOID do analista, DATA, HORAS 9,00, LIMITE 8,00, GESTORID do gestor do departamento).
+- [ ] No mesmo dia, lançar mais 2 h: grava (11 h), mensagem "acima de 10h00"; a linha da TbTimeAviso é atualizada (HORAS 11,00, LIMITE 10,00, VISTOEM volta a NULL). Nada é recusado.
+- [ ] Com o gestor desse departamento: o botão "Avisos (1)" aparece em vermelho na lista. Clicar abre a aba Avisos com a linha; "Marcar todos como vistos" grava VISTOEM e VISTOPOR e o botão volta a "Avisos".
+- [ ] Com a diretoria: a aba Avisos mostra os avisos de todos os gestores.
+- [ ] Se a equipe do analista tiver líder (cadastro de Equipes), o aviso vai para o líder, não para o gestor do departamento.
+- [ ] Várias empresas num dia com 9 h, 4 empresas, 1 h "cada": grava 4 linhas (13 h no dia) e avisa "acima de 10h00".
 
 **Banco de horas (adiado em 19/10/2026)**
 - [ ] Cartão BANCO DE HORAS aparece sem número, com "em breve"; clicar nele não abre nada e o cursor não vira mão.
@@ -229,10 +235,10 @@ Em cada comparação, usar o mesmo período nas duas telas. A tela nova mostra h
 
 Só depois do roteiro acima aprovado em pré-produção e das decisões em aberto respondidas (ver README).
 
-- [ ] Rodar `preprod\2026-10-20-Grupos-de-Empresas.sql` no banco `Grupo_Mecano`.
+- [ ] Rodar `preprod\2026-10-20-Grupos-de-Empresas.sql` e `preprod\2026-10-23-Avisos-de-Horas.sql` no banco `Grupo_Mecano`.
 - [ ] Repetir os passos 1 a 3 no projeto de produção (`Grupo_Mecano\Grupo_Mecano\`).
 - [ ] Publicar o Gerenciador como de costume.
-- [ ] Avisar a equipe: nova tela, aviso acima de 8 h, teto de 10 h por dia.
+- [ ] Avisar a equipe: nova tela; acima de 8 h avisa a pessoa e o gestor, nada é recusado.
 
 ## Voltar atrás
 

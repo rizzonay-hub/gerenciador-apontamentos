@@ -25,6 +25,8 @@ Capturas em `capturas\`: `01-apontamentos.png`, `02-novo-apontamento.png`, `02b-
 
 ### Trava de 10 h e banco de horas (16/10/2026; banco adiado em 19/10/2026)
 
+> **23/10/2026**: a **trava de 10 h saiu** (`BancoHoras.TRAVA_ATIVA = False`), por pedido dos usuários: acima de 8h00 ou 10h00 avisa a pessoa e o gestor (`TbTimeAviso`, aba Avisos do Gerenciamento) e grava.
+>
 > **19/10/2026**: o banco de horas foi **adiado** pela diretoria (a equipe confundiria com o banco oficial do sistema de ponto). `BancoHoras.ATIVO = False` em `Apontamento.vb`: o cartão fica na tela sem número, o clique não abre o extrato e as mensagens não falam em banco. No lugar, quem passa de 8h00 é **avisado na tela** (subtítulo em vermelho e `MessageBox` ao gravar) e grava; a trava de 10 h continua. O que está descrito abaixo é a conta pronta, para quando for ligada.
 
 - **Regra**: ninguém aponta mais de 10h00 num dia (`BancoHoras.LIMITE_DIA`). O que passar da jornada do dia é crédito no banco de horas: 8h00 em dia útil, 4h00 no sábado (`JORNADA_SABADO`, a mesma conta da meta da TbHorasMes e do "Sabado" que o período grava), 0 no domingo. A conta começa em **01/10/2026** (`BancoHoras.INICIO_VIGENCIA`, a confirmar com a diretoria); apontamentos anteriores não entram.

@@ -582,6 +582,125 @@ Public Module ModApontamento
         End Using
     End Sub
 
+    ' ------------------------------------------------------------ avisos ao gestor (TbTimeAviso)
+    Private _avisosDisponiveis As Boolean? = Nothing
+
+    Private Function TabelaExiste(nome As String) As Boolean
+        Try
+            Using cn As New SqlConnection(ConnString)
+                cn.Open()
+                Using cmd As New SqlCommand("SELECT CASE WHEN OBJECT_ID(@n, 'U') IS NULL THEN 0 ELSE 1 END", cn)
+                    cmd.Parameters.Add("@n", SqlDbType.NVarChar, 200).Value = "dbo." & nome
+                    Return Convert.ToInt32(cmd.ExecuteScalar()) = 1
+                End Using
+            End Using
+        Catch
+            Return False
+        End Try
+    End Function
+
+    ''' <summary>True quando a TbTimeAviso existe (script 2026-10-23 rodado). Sem ela, ninguém é avisado e nada quebra.</summary>
+    Public Function AvisosDisponiveis() As Boolean
+        If Not _avisosDisponiveis.HasValue Then _avisosDisponiveis = TabelaExiste("TbTimeAviso")
+        Return _avisosDisponiveis.Value
+    End Function
+
+    ''' <summary>Quem recebe os avisos de uma pessoa: líder das equipes dela (TbEquipe, se existir) e, senão, a regra por departamento (AvisoHoras.EscolherGestores).</summary>
+    Public Function GestoresDe(usuarioId As Integer) As List(Of ColaboradorResumo)
+        Dim lideres As New List(Of Integer)()
+        If TabelaExiste("TbEquipe") AndAlso TabelaExiste("TbEquipeMembro") Then
+            Using cn As New SqlConnection(ConnString)
+                cn.Open()
+                Using cmd As New SqlCommand("SELECT DISTINCT e.LIDERID FROM dbo.TbEquipeMembro m JOIN dbo.TbEquipe e ON e.CODIGOID = m.EQUIPEID " &
+                                            "WHERE m.USUARIOID = @u AND e.ATIVO = 1 AND e.LIDERID IS NOT NULL", cn)
+                    cmd.Parameters.Add("@u", SqlDbType.Int).Value = usuarioId
+                    Using rd = cmd.ExecuteReader()
+                        While rd.Read()
+                            lideres.Add(Convert.ToInt32(rd(0)))
+                        End While
+                    End Using
+                End Using
+            End Using
+        End If
+        Return AvisoHoras.EscolherGestores(Colaboradores(), usuarioId, lideres)
+    End Function
+
+    ''' <summary>
+    ''' Registra (ou atualiza) o aviso de um dia acima do limite para cada gestor da pessoa, e devolve esses gestores.
+    ''' Lançar de novo no mesmo dia atualiza as horas e volta o aviso a "não visto". Sem a tabela, devolve lista vazia.
+    ''' </summary>
+    Public Function RegistrarAviso(usuarioId As Integer, data As Date, horasDia As Decimal, limite As Decimal) As List(Of ColaboradorResumo)
+        If Not AvisosDisponiveis() Then Return New List(Of ColaboradorResumo)()
+        Dim pessoa = Colaboradores().FirstOrDefault(Function(c) c.Id = usuarioId)
+        Dim nome = If(pessoa Is Nothing, If(usuarioId = Usersys, UsuarioLogadoNome(), "usuário " & usuarioId), pessoa.Nome)
+        Dim gestores = GestoresDe(usuarioId)
+        Using cn As New SqlConnection(ConnString)
+            cn.Open()
+            For Each g In gestores
+                Using cmd As New SqlCommand(
+                    "UPDATE dbo.TbTimeAviso SET HORAS = @h, LIMITE = @l, USUARIO = @nome, GESTOR = @gn, CRIADOEM = GETDATE(), VISTOEM = NULL, VISTOPOR = NULL " &
+                    "WHERE USUARIOID = @u AND DATA = @d AND GESTORID = @g; " &
+                    "IF @@ROWCOUNT = 0 INSERT INTO dbo.TbTimeAviso (USUARIOID, USUARIO, DATA, HORAS, LIMITE, GESTORID, GESTOR) VALUES (@u, @nome, @d, @h, @l, @g, @gn)", cn)
+                    cmd.Parameters.Add("@u", SqlDbType.Int).Value = usuarioId
+                    cmd.Parameters.Add("@nome", SqlDbType.NVarChar, 50).Value = Cortar(nome, 50)
+                    cmd.Parameters.Add("@d", SqlDbType.SmallDateTime).Value = data.Date
+                    cmd.Parameters.Add("@h", SqlDbType.Decimal).Value = horasDia
+                    cmd.Parameters.Add("@l", SqlDbType.Decimal).Value = limite
+                    cmd.Parameters.Add("@g", SqlDbType.Int).Value = g.Id
+                    cmd.Parameters.Add("@gn", SqlDbType.NVarChar, 50).Value = Cortar(g.Nome, 50)
+                    cmd.ExecuteNonQuery()
+                End Using
+            Next
+        End Using
+        Return gestores
+    End Function
+
+    ''' <summary>Avisos para quem está logado (a diretoria vê os de todos), no período; só os não vistos ou todos.</summary>
+    Public Function AvisosPara(de As Date, ate As Date, somenteNaoVistos As Boolean) As List(Of AvisoHoras)
+        Dim lista As New List(Of AvisoHoras)()
+        If Not AvisosDisponiveis() Then Return lista
+        Dim diretoria = If(UserFuncao, "").ToUpperInvariant().Trim().StartsWith("DIRETORIA")
+        Using cn As New SqlConnection(ConnString)
+            cn.Open()
+            Using cmd As New SqlCommand("SELECT CODIGOID, USUARIOID, USUARIO, DATA, HORAS, LIMITE, GESTORID, GESTOR, CRIADOEM, VISTOEM, VISTOPOR FROM dbo.TbTimeAviso " &
+                                        "WHERE (@todos = 1 OR GESTORID = @g) AND DATA >= @d1 AND DATA <= @d2 AND (@so = 0 OR VISTOEM IS NULL) " &
+                                        "ORDER BY CASE WHEN VISTOEM IS NULL THEN 0 ELSE 1 END, DATA DESC, USUARIO", cn) With {.CommandTimeout = 60}
+                cmd.Parameters.Add("@todos", SqlDbType.Bit).Value = diretoria
+                cmd.Parameters.Add("@g", SqlDbType.Int).Value = Usersys
+                cmd.Parameters.Add("@d1", SqlDbType.SmallDateTime).Value = de.Date
+                cmd.Parameters.Add("@d2", SqlDbType.SmallDateTime).Value = ate.Date
+                cmd.Parameters.Add("@so", SqlDbType.Bit).Value = somenteNaoVistos
+                Using rd = cmd.ExecuteReader()
+                    While rd.Read()
+                        lista.Add(New AvisoHoras With {
+                            .Id = Convert.ToInt32(rd("CODIGOID")), .UsuarioId = Convert.ToInt32(rd("USUARIOID")), .Usuario = Texto(rd("USUARIO")),
+                            .Data = Convert.ToDateTime(rd("DATA")).Date, .Horas = Convert.ToDecimal(rd("HORAS")), .Limite = Convert.ToDecimal(rd("LIMITE")),
+                            .GestorId = Convert.ToInt32(rd("GESTORID")), .Gestor = Texto(rd("GESTOR")), .CriadoEm = Convert.ToDateTime(rd("CRIADOEM")),
+                            .VistoEm = If(rd("VISTOEM") Is DBNull.Value, CType(Nothing, Date?), Convert.ToDateTime(rd("VISTOEM"))), .VistoPor = Texto(rd("VISTOPOR"))})
+                    End While
+                End Using
+            End Using
+        End Using
+        Return lista
+    End Function
+
+    ''' <summary>Quantos avisos não vistos esperam quem está logado (para o botão "Avisos (N)").</summary>
+    Public Function AvisosNaoVistos() As Integer
+        If Not AvisosDisponiveis() Then Return 0
+        Return AvisosPara(New Date(2000, 1, 1), Date.Today.AddDays(1), True).Count
+    End Function
+
+    Public Sub MarcarAvisoVisto(id As Integer)
+        Using cn As New SqlConnection(ConnString)
+            cn.Open()
+            Using cmd As New SqlCommand("UPDATE dbo.TbTimeAviso SET VISTOEM = GETDATE(), VISTOPOR = @p WHERE CODIGOID = @id AND VISTOEM IS NULL", cn)
+                cmd.Parameters.Add("@p", SqlDbType.NVarChar, 50).Value = Cortar(UsuarioLogadoNome(), 50)
+                cmd.Parameters.Add("@id", SqlDbType.Int).Value = id
+                cmd.ExecuteNonQuery()
+            End Using
+        End Using
+    End Sub
+
     ''' <summary>Atividades internas do Outros.txt; sem "administrativo" para quem não é gestor/diretoria.</summary>
     Public Function AtividadesInternas() As List(Of String)
         Dim linhas As New List(Of String)()

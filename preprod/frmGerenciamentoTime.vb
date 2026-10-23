@@ -45,12 +45,14 @@ Public Class frmGerenciamentoTime
             _instancia.Activate()
         End If
         _instancia.MostrarAba(aba)
+        If aba = ABA_AVISOS Then _instancia.ConsultarAgora()
     End Sub
 
     Public Const ABA_ANALITICA As Integer = 0
     Public Const ABA_SINTETICA As Integer = 1
     Public Const ABA_FUNCIONARIO As Integer = 2
     Public Const ABA_USUARIO_DATA As Integer = 3
+    Public Const ABA_AVISOS As Integer = 4
 
     Private _escala As Single = 1.0F
 
@@ -69,7 +71,9 @@ Public Class frmGerenciamentoTime
     Private _filtroSintetica As FiltroSintetica = Nothing
     Private _periodoFuncionario As Date() = Nothing
     Private _periodoUsuarioData As Date() = Nothing
-    Private ReadOnly _consultada(3) As Boolean
+    Private ReadOnly _consultada(4) As Boolean
+    Private _linhasAvisos As New List(Of AvisoHoras)()
+    Private _periodoAvisos As Date() = Nothing
 
     ' ---------- controles comuns ----------
     Private pnlHeader As Panel
@@ -117,7 +121,14 @@ Public Class frmGerenciamentoTime
     Private udAte As DateTimePicker
     Private udEsperado As Label
 
-    Private ReadOnly _abas As String() = {"Analítica", "Sintética", "Por funcionário", "Por usuário e data"}
+    ' ---------- Avisos (quem passou de 8 h ou 10 h: para o gestor) ----------
+    Private pnlAvisos As Panel
+    Private avDe As DateTimePicker
+    Private avAte As DateTimePicker
+    Private avSoNaoVistos As CheckBox
+    Private btnVistos As BotaoMecano
+
+    Private ReadOnly _abas As String() = {"Analítica", "Sintética", "Por funcionário", "Por usuário e data", "Avisos"}
     Private ReadOnly _abasRects As New List(Of Rectangle)()
     Private _abaAtiva As Integer = ABA_ANALITICA
 
@@ -238,12 +249,13 @@ Public Class frmGerenciamentoTime
     End Sub
 
     Private Sub EscolherAba(i As Integer)
-        If i < 0 OrElse i > 3 Then Return
+        If i < 0 OrElse i > 4 Then Return
         _abaAtiva = i
         pnlAnalitica.Visible = (i = ABA_ANALITICA)
         pnlSintetica.Visible = (i = ABA_SINTETICA)
         pnlFuncionario.Visible = (i = ABA_FUNCIONARIO)
         pnlUsuarioData.Visible = (i = ABA_USUARIO_DATA)
+        pnlAvisos.Visible = (i = ABA_AVISOS)
         pnlAbas.Invalidate()
         Preencher()
     End Sub
@@ -279,11 +291,13 @@ Public Class frmGerenciamentoTime
         pnlSintetica = MontarFiltrosSintetica()
         pnlFuncionario = MontarFiltrosFuncionario()
         pnlUsuarioData = MontarFiltrosUsuarioData()
+        pnlAvisos = MontarFiltrosAvisos()
+        pnlAvisos.Visible = False
         pnlSintetica.Visible = False
         pnlFuncionario.Visible = False
         pnlUsuarioData.Visible = False
 
-        pnlFiltros.Controls.AddRange(New Control() {pnlAnalitica, pnlSintetica, pnlFuncionario, pnlUsuarioData, btnConsultar, btnExportar})
+        pnlFiltros.Controls.AddRange(New Control() {pnlAnalitica, pnlSintetica, pnlFuncionario, pnlUsuarioData, pnlAvisos, btnConsultar, btnExportar})
         btnConsultar.BringToFront()
         btnExportar.BringToFront()
         AddHandler pnlFiltros.Resize, Sub() PosicionarBotoes()
@@ -405,6 +419,38 @@ Public Class frmGerenciamentoTime
         Return pnl
     End Function
 
+    ' ---------- Avisos ----------
+    Private Function MontarFiltrosAvisos() As Panel
+        Dim pnl = NovoPainelFiltro()
+        Dim y1 = Esc(14), y2 = Esc(66)
+        MontarPeriodo(pnl, Esc(24), y1, avDe, avAte)
+        avDe.Value = Date.Today.AddDays(-60)
+        avSoNaoVistos = New CheckBox With {.Text = "Só os que ainda não vi", .AutoSize = True, .Left = Esc(24), .Top = y2 + Esc(20), .Checked = True, .Font = TemaMecano.FonteCorpo(9.5F)}
+        btnVistos = BotaoMecano.Secundario("Marcar todos como vistos", Esc(200), Esc(36))
+        btnVistos.Left = Esc(230) : btnVistos.Top = y2 + Esc(10)
+        btnVistos.Enabled = False
+        AddHandler btnVistos.Click, Sub() MarcarVistos()
+        pnl.Controls.AddRange(New Control() {avSoNaoVistos, btnVistos})
+        Return pnl
+    End Function
+
+    ''' <summary>Marca como vistos todos os avisos da lista e consulta de novo.</summary>
+    Private Sub MarcarVistos()
+        Dim pendentes = _linhasAvisos.Where(Function(a) Not a.Visto).ToList()
+        If pendentes.Count = 0 Then Return
+        Me.Cursor = Cursors.WaitCursor
+        Try
+            For Each a In pendentes
+                ModApontamento.MarcarAvisoVisto(a.Id)
+            Next
+        Catch ex As Exception
+            MessageBox.Show(Me, "Não foi possível marcar como visto." & vbCrLf & ex.Message, "Gerenciamento do Time", MessageBoxButtons.OK, MessageBoxIcon.Error)
+        Finally
+            Me.Cursor = Cursors.Default
+        End Try
+        Consultar()
+    End Sub
+
     Private Sub AtualizarEsperado()
         If udAte.Value.Date < udDe.Value.Date Then
             udEsperado.Text = "A data final é anterior à inicial."
@@ -469,7 +515,17 @@ Public Class frmGerenciamentoTime
 
     ''' <summary>Por usuário e data: quem está fora do esperado fica em vermelho, como na tela antiga.</summary>
     Private Sub FormatarCelula(sender As Object, e As DataGridViewCellFormattingEventArgs)
-        If _abaAtiva <> ABA_USUARIO_DATA OrElse e.RowIndex < 0 Then Return
+        If e.RowIndex < 0 Then Return
+        If _abaAtiva = ABA_AVISOS Then
+            If grade.Columns.Contains("Visto") AndAlso Convert.ToString(grade.Rows(e.RowIndex).Cells("Visto").Value) = "não" Then
+                e.CellStyle.ForeColor = TemaMecano.VermelhoPrimario
+                If grade.Columns(e.ColumnIndex).Name = "Colaborador" OrElse grade.Columns(e.ColumnIndex).Name = "Horas no dia" Then
+                    e.CellStyle.Font = TemaMecano.FonteCorpo(9.5F, FontStyle.Bold)
+                End If
+            End If
+            Return
+        End If
+        If _abaAtiva <> ABA_USUARIO_DATA Then Return
         If grade.Columns.Contains("Situação") Then
             Dim situacao = Convert.ToString(grade.Rows(e.RowIndex).Cells("Situação").Value)
             If situacao <> "Em dia" Then
@@ -627,10 +683,10 @@ Public Class frmGerenciamentoTime
 
     ''' <summary>Período das quatro abas de uma vez (captura e testes).</summary>
     Public Sub DefinirPeriodo(de As Date, ate As Date)
-        For Each dtp In New DateTimePicker() {anDe, siDe, fuDe, udDe}
+        For Each dtp In New DateTimePicker() {anDe, siDe, fuDe, udDe, avDe}
             dtp.Value = de.Date
         Next
-        For Each dtp In New DateTimePicker() {anAte, siAte, fuAte, udAte}
+        For Each dtp In New DateTimePicker() {anAte, siAte, fuAte, udAte, avAte}
             dtp.Value = ate.Date
         Next
     End Sub
@@ -669,6 +725,10 @@ Public Class frmGerenciamentoTime
                     If Not PeriodoValido(udDe, udAte) Then Return
                     _linhasUsuarioData = ModApontamento.ConsultaPorUsuarioData(udDe.Value.Date, udAte.Value.Date)
                     _periodoUsuarioData = {udDe.Value.Date, udAte.Value.Date}
+                Case ABA_AVISOS
+                    If Not PeriodoValido(avDe, avAte) Then Return
+                    _linhasAvisos = ModApontamento.AvisosPara(avDe.Value.Date, avAte.Value.Date, avSoNaoVistos.Checked)
+                    _periodoAvisos = {avDe.Value.Date, avAte.Value.Date}
             End Select
             _consultada(_abaAtiva) = True
         Catch ex As Exception
@@ -727,6 +787,7 @@ Public Class frmGerenciamentoTime
             Case ABA_SINTETICA : PreencherSintetica()
             Case ABA_FUNCIONARIO : PreencherFuncionario()
             Case ABA_USUARIO_DATA : PreencherUsuarioData()
+            Case ABA_AVISOS : PreencherAvisos()
         End Select
     End Sub
 
@@ -891,6 +952,37 @@ Public Class frmGerenciamentoTime
                         If(p Is Nothing, "", "  ·  " & TextoPeriodo(p(0), p(1))))
     End Sub
 
+    Private Sub PreencherAvisos()
+        Dim dt As New DataTable()
+        dt.Columns.Add("Dia", GetType(String))
+        dt.Columns.Add("Colaborador", GetType(String))
+        dt.Columns.Add("Horas no dia", GetType(String))
+        dt.Columns.Add("Limite", GetType(String))
+        dt.Columns.Add("Para", GetType(String))
+        dt.Columns.Add("Registrado", GetType(String))
+        dt.Columns.Add("Visto", GetType(String))
+        For Each a In _linhasAvisos
+            dt.Rows.Add(Apontamento.FormatarData(a.Data), a.Usuario, Apontamento.FormatarHoras(a.Horas), a.LimiteTexto, a.Gestor,
+                        a.CriadoEm.ToString("dd/MM HH:mm"), If(a.Visto, "sim", "não"))
+        Next
+        AplicarTabela(dt, If(ModApontamento.AvisosDisponiveis(), If(avSoNaoVistos.Checked, "Nenhum aviso por ver nesse período.", "Nenhum aviso nesse período."),
+                                                                "Avisos ainda não configurados no banco (script 2026-10-23-Avisos-de-Horas.sql)."))
+        If grade.Columns.Count > 0 Then
+            Coluna("Dia", 12)
+            Coluna("Colaborador", 26)
+            Coluna("Horas no dia", 11, direita:=True, negrito:=True)
+            Coluna("Limite", 13)
+            Coluna("Para", 18, apagado:=True)
+            Coluna("Registrado", 11, apagado:=True)
+            Coluna("Visto", 7)
+        End If
+        Dim naoVistos = _linhasAvisos.Where(Function(a) Not a.Visto).Count()
+        btnVistos.Enabled = (naoVistos > 0)
+        Dim p = _periodoAvisos
+        MostrarMensagem(_linhasAvisos.Count & If(_linhasAvisos.Count = 1, " aviso", " avisos") & "  ·  " & naoVistos & " por ver" &
+                        If(p Is Nothing, "", "  ·  " & TextoPeriodo(p(0), p(1))))
+    End Sub
+
     ' =================================================================
     '  EXPORTAR (CSV da aba ativa, com linha de total)
     ' =================================================================
@@ -931,7 +1023,7 @@ Public Class frmGerenciamentoTime
                               Apontamento.FormatarHoras(_linhasFuncionario.Sum(Function(l) l.Total)) & ";;;" &
                               Apontamento.FormatarDecimal(_linhasFuncionario.Sum(Function(l) l.HorasDiretas)) & ";" & Apontamento.FormatarDecimal(_linhasFuncionario.Sum(Function(l) l.HorasIndiretas)) & ";" &
                               Apontamento.FormatarDecimal(_linhasFuncionario.Sum(Function(l) l.Total)))
-            Case Else
+            Case ABA_USUARIO_DATA
                 If _linhasUsuarioData.Count = 0 Then Return
                 nome = "time-por-usuario-" & NomePeriodo(udDe, udAte)
                 sb.AppendLine("Colaborador;Depto;Horas;Esperado;Diferença;Situação;Horas (decimal)")
@@ -940,6 +1032,14 @@ Public Class frmGerenciamentoTime
                                   If(l.Diferenca >= 0D, "+", "") & Apontamento.FormatarHoras(l.Diferenca) & ";" & l.Situacao & ";" & Apontamento.FormatarDecimal(l.Horas))
                 Next
                 sb.AppendLine("Total;;" & Apontamento.FormatarHoras(_linhasUsuarioData.Sum(Function(l) l.Horas)) & ";;;;" & Apontamento.FormatarDecimal(_linhasUsuarioData.Sum(Function(l) l.Horas)))
+            Case Else
+                If _linhasAvisos.Count = 0 Then Return
+                nome = "time-avisos-" & NomePeriodo(avDe, avAte)
+                sb.AppendLine("Dia;Colaborador;Horas no dia;Limite;Para;Registrado em;Visto em;Visto por;Horas (decimal)")
+                For Each a In _linhasAvisos
+                    sb.AppendLine(a.Data.ToString("dd/MM/yyyy") & ";" & a.Usuario & ";" & Apontamento.FormatarHoras(a.Horas) & ";" & a.LimiteTexto & ";" & a.Gestor & ";" &
+                                  a.CriadoEm.ToString("dd/MM/yyyy HH:mm") & ";" & If(a.Visto, a.VistoEm.Value.ToString("dd/MM/yyyy HH:mm"), "") & ";" & a.VistoPor & ";" & Apontamento.FormatarDecimal(a.Horas))
+                Next
         End Select
 
         Using dlg As New SaveFileDialog With {.Filter = "CSV (*.csv)|*.csv", .FileName = nome & ".csv"}

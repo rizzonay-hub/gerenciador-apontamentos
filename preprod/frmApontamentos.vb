@@ -77,6 +77,7 @@ Public Class frmApontamentos
     Private btnPeriodo As BotaoMecano          ' gestão: "Anotações por período" (só gestor e diretoria)
     Private btnGerenciamento As BotaoMecano    ' gestão: as consultas do menu Gerenciamento
     Private btnGrupos As BotaoMecano           ' "Meus grupos de empresas" (todo mundo; some se a tabela não existir)
+    Private btnAvisos As BotaoMecano           ' gestor: "Avisos (N)" de quem passou de 8 h / 10 h; abre a aba Avisos do Gerenciamento
     Private pnlResumo As PainelResumoHoras
     Private grade As DataGridView
     Private lblVazio As Label
@@ -128,6 +129,7 @@ Public Class frmApontamentos
         lblVazio.BringToFront()
 
         AddHandler Me.Shown, Sub()
+                                 PosicionarAcoes()   ' o layout inicial (antes de a janela ter o tamanho final) pode deixar os botões fora da barra
                                  Carregar()
                                  grade.Focus()
                              End Sub
@@ -250,7 +252,13 @@ Public Class frmApontamentos
                                         End Using
                                     End Sub
 
-        pnlToolbar.Controls.AddRange(New Control() {cboPeriodo, dtpDe, lblAte, dtpAte, txtBusca, btnGrupos, btnGerenciamento, btnPeriodo, btnExcluir, btnExportar, btnNovo})
+        btnAvisos = BotaoMecano.Secundario("Avisos", Esc(110), altura)
+        btnAvisos.Anchor = AnchorStyles.Top Or AnchorStyles.Right
+        btnAvisos.Top = y
+        btnAvisos.Visible = gestor AndAlso ModApontamento.AvisosDisponiveis()
+        AddHandler btnAvisos.Click, Sub() frmGerenciamentoTime.Abrir(frmGerenciamentoTime.ABA_AVISOS)
+
+        pnlToolbar.Controls.AddRange(New Control() {cboPeriodo, dtpDe, lblAte, dtpAte, txtBusca, btnAvisos, btnGrupos, btnGerenciamento, btnPeriodo, btnExcluir, btnExportar, btnNovo})
         AddHandler pnlToolbar.Resize, Sub() PosicionarAcoes()
         PosicionarFiltros()
         PosicionarAcoes()
@@ -274,13 +282,25 @@ Public Class frmApontamentos
     ''' ao lado dos filtros; se não couber, descem para linhas inteiras (janela estreita, DPI alto, tela
     ''' principal com a barra lateral). A barra cresce 44 por linha a mais.
     ''' </summary>
+    Private _posicionando As Boolean = False
+
     Private Sub PosicionarAcoes()
+        If _posicionando Then Return   ' mudar a altura da barra dispara Resize, que chamaria isto de novo no meio
+        _posicionando = True
+        Try
+            PosicionarAcoesAgora()
+        Finally
+            _posicionando = False
+        End Try
+    End Sub
+
+    Private Sub PosicionarAcoesAgora()
         Dim direita = pnlToolbar.Width - Esc(24)
         Dim y = Esc(14)
         Dim passo = Esc(44)
         Dim espaco = Esc(8)
         ' ordem em que aparecem, da direita para a esquerda
-        Dim botoes = New BotaoMecano() {btnNovo, btnExportar, btnExcluir, btnPeriodo, btnGerenciamento, btnGrupos}.Where(Function(b) b.Visible).ToList()
+        Dim botoes = New BotaoMecano() {btnNovo, btnExportar, btnExcluir, btnPeriodo, btnGerenciamento, btnGrupos, btnAvisos}.Where(Function(b) b.Visible).ToList()
 
         Dim linha = 0
         Dim x = direita
@@ -305,6 +325,19 @@ Public Class frmApontamentos
         Dim altura = Esc(62) + linha * passo
         If pnlToolbar.Height <> altura Then pnlToolbar.Height = altura
         pnlToolbar.Invalidate()   ' a linha divisória acompanha a altura nova (sem isso a antiga fica desenhada)
+    End Sub
+
+    ''' Botão "Avisos (N)": quantos avisos de horas o gestor logado ainda não viu. Fica vermelho quando há algum.</summary>
+    Private Sub AtualizarAvisos()
+        If Not btnAvisos.Visible Then Return
+        Dim n = 0
+        Try
+            n = ModApontamento.AvisosNaoVistos()
+        Catch
+        End Try
+        btnAvisos.Text = If(n = 0, "Avisos", "Avisos (" & n & ")")
+        btnAvisos.CorTexto = If(n = 0, TemaMecano.CinzaEscuro, TemaMecano.VermelhoPrimario)
+        btnAvisos.Invalidate()
     End Sub
 
     ''' <summary>"Anotações por período": férias/afastamento no nome de outra pessoa (só gestor e diretoria).</summary>
@@ -502,6 +535,7 @@ Public Class frmApontamentos
             _banco = If(BancoHoras.ATIVO, ModApontamento.CalcularBanco(), New BancoHoras())
             pnlResumo.Banco = _banco
             pnlResumo.Resumo = _resumo
+            AtualizarAvisos()
             Dim p = PeriodoAtual()
             _itens = ModApontamento.Listar(p(0), p(1))
         Catch ex As Exception

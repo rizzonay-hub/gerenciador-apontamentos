@@ -1,5 +1,15 @@
 # Histórico — Apontamentos de horas
 
+## 23/10/2026 — sem trava; aviso ao gestor
+
+**Mudou** (decisão dos usuários do GM)
+- A **trava de 10 h saiu**: `BancoHoras.TRAVA_ATIVA = False`. Acima de 8h00 ou de 10h00 a pessoa é avisada na tela (subtítulo vermelho e mensagem ao gravar) e grava.
+
+**Novo**
+- **Aviso ao gestor**: ao gravar um dia acima do limite, `ModApontamento.RegistrarAviso` grava uma linha na `TbTimeAviso` para cada gestor da pessoa (uma por pessoa, dia e gestor; lançar de novo atualiza e volta a "não visto"). Quem é o gestor (`AvisoHoras.EscolherGestores`): líder das equipes ativas da pessoa (TbEquipe.LIDERID, quando existir), senão gestor do departamento, senão diretoria, senão qualquer gestor.
+- Botão **Avisos (N)** na lista (só gestor e diretoria; vermelho com pendências) e aba **Avisos** no Gerenciamento do Time (período, "só os que ainda não vi", "Marcar todos como vistos", Exportar). A diretoria vê os de todos.
+- Script `preprod\2026-10-23-Avisos-de-Horas.sql`; demo com `avisos.txt`; captura 12; teste sem interface.
+
 ## 20/10/2026 — Meus grupos de empresas
 
 **Corrigido**
