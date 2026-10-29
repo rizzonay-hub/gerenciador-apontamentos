@@ -21,14 +21,14 @@ Sugestão de configuração:
 
 ---
 
-**1. Para marcar as suas horas, qual botão você aperta?**
+**1. Você passou a manhã inteira em uma reunião da própria Mêcano, sem trabalhar para nenhuma empresa. O que você faz?**
 
-- ( ) Exportar
-- (•) Novo apontamento
-- ( ) Excluir
+- ( ) Não marca nada, porque não foi para uma empresa
+- ( ) Marca como Cliente e escolhe qualquer empresa
+- (•) Marca como Atividade interna, com o tempo da reunião
 
-Se acertou: Isso. O botão vermelho Novo apontamento abre a janela para marcar as horas.
-Se errou: O botão certo é o vermelho, Novo apontamento. Exportar manda a lista para uma planilha e Excluir apaga uma marcação.
+Se acertou: Isso. Reunião, treinamento e atestado são Atividade interna. O tempo conta no seu dia do mesmo jeito.
+Se errou: Toda hora de trabalho é marcada, mesmo sem empresa. Reunião, treinamento e atestado entram como Atividade interna, nunca como Cliente.
 
 ---
 
