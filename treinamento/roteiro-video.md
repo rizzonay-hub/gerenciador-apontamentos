@@ -92,7 +92,7 @@ Duração estimada: Trilha 1 com cerca de 6 minutos; Trilha 2 com cerca de 4 min
 | # | Tela | Narração |
 |---|---|---|
 | 35 | Cartão "Resumo" com cinco linhas: "Marque as horas todos os dias" · "Novo apontamento: cliente ou atividade interna" · "Várias empresas e Grupos: o mesmo trabalho de uma vez" · "Dois cliques corrige; o cartão completa" · "Mais de 8 horas: guarda e avisa" | Resumo. Marque as horas todos os dias. Novo apontamento para um cliente ou uma atividade interna. Várias empresas e Grupos para o mesmo trabalho de uma vez. Dois cliques corrige, e o cartão completa o dia que faltou. Mais de oito horas: o sistema guarda e avisa. |
-| 36 | Cartão "Dúvidas": "Como usar: pergunte ao seu gestor" · "O sistema deu erro: fale com a Nayara" | Ficou com dúvida de como usar? Pergunte ao seu gestor. O sistema deu erro? Fale com a Nayara. |
+| 36 | Cartão "Dúvidas": "Como usar: pergunte ao seu gestor" · "O sistema deu erro: fale com o Emerson" | Ficou com dúvida de como usar? Pergunte ao seu gestor. O sistema deu erro? Fale com o Emerson. |
 | 37 | Cartão "Agora é com você": "Responda o formulário com 5 perguntas" · "Leva 2 minutos" · "O link está junto com este vídeo" | Agora é com você. Responda o formulário com cinco perguntas. Leva dois minutos. O link está junto com este vídeo. |
 | 38 | Cartão: marca Mêcano · "Treinamento concluído" | Você terminou o treinamento Apontamentos de horas. Obrigado. |
 
@@ -146,7 +146,7 @@ Duração estimada: Trilha 1 com cerca de 6 minutos; Trilha 2 com cerca de 4 min
 | # | Tela | Narração |
 |---|---|---|
 | 22 | Cartão "Resumo": "Campo Colaborador e Lançar período: marcar pela equipe" · "Gerenciamento: ver as horas" · "Avisos: olhar e marcar como vistos" | Resumo. O campo Colaborador e o Lançar período marcam pela equipe. O Gerenciamento mostra as horas. Os avisos são para olhar e marcar como vistos. |
-| 23 | Cartão "Dúvidas": "O sistema deu erro: fale com a Nayara" | O sistema deu erro? Fale com a Nayara. |
+| 23 | Cartão "Dúvidas": "O sistema deu erro: fale com o Emerson" | O sistema deu erro? Fale com o Emerson. |
 | 24 | Cartão "Agora é com você": "Responda o formulário com 3 perguntas" | Agora é com você. Responda o formulário com três perguntas. O link está junto com este vídeo. |
 | 25 | Cartão: marca · "Treinamento concluído" | Você terminou o treinamento Gerenciamento do Time. Obrigado. |
 

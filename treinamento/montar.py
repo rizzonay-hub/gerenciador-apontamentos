@@ -335,7 +335,7 @@ T1 = [
     {'id': '33', 'tipo': 'tela', 'parte': 5, 'captura': '02c-acima-de-8h.png', 'destaque': 'subtitulo'},
     {'id': '34', 'tipo': 'cartao', 'parte': 5, 'etiqueta': 'O que lembrar', 'linhas': ['Nada é bloqueado', 'Acima de 8 horas, você e o seu gestor são avisados', 'Marque o tempo de verdade']},
     {'id': '35', 'tipo': 'cartao', 'etiqueta': 'Resumo', 'linhas': ['Marque as horas todos os dias', 'Novo apontamento: cliente ou atividade interna', 'Várias empresas e Grupos: o mesmo trabalho de uma vez', 'Dois cliques corrige; o cartão completa', 'Mais de 8 horas: guarda e avisa']},
-    {'id': '36', 'tipo': 'cartao', 'etiqueta': 'Dúvidas', 'linhas': ['Como usar: pergunte ao seu gestor', 'O sistema deu erro: fale com a Nayara']},
+    {'id': '36', 'tipo': 'cartao', 'etiqueta': 'Dúvidas', 'linhas': ['Como usar: pergunte ao seu gestor', 'O sistema deu erro: fale com o Emerson']},
     {'id': '37', 'tipo': 'cartao', 'etiqueta': 'Agora é com você', 'linhas': ['Responda o formulário com 5 perguntas', 'Leva 2 minutos', 'O link está junto com este vídeo']},
     {'id': '38', 'tipo': 'encerramento', 'titulo': 'Treinamento concluído', 'subtitulo': 'Apontamentos de horas'},
 ]
@@ -364,7 +364,7 @@ T2 = [
     {'id': '20', 'tipo': 'tela', 'parte': 3, 'gestor': True, 'captura': '12-gerenciamento-avisos.png', 'destaque': 'marcar-vistos'},
     {'id': '21', 'tipo': 'cartao', 'parte': 3, 'etiqueta': 'O que lembrar', 'linhas': ['O aviso é para conversar com a pessoa', 'Olhe os avisos e marque como vistos']},
     {'id': '22', 'tipo': 'cartao', 'etiqueta': 'Resumo', 'linhas': ['Campo Colaborador e Lançar período: marcar pela equipe', 'Gerenciamento: ver as horas', 'Avisos: olhar e marcar como vistos']},
-    {'id': '23', 'tipo': 'cartao', 'etiqueta': 'Dúvidas', 'linhas': ['O sistema deu erro: fale com a Nayara']},
+    {'id': '23', 'tipo': 'cartao', 'etiqueta': 'Dúvidas', 'linhas': ['O sistema deu erro: fale com o Emerson']},
     {'id': '24', 'tipo': 'cartao', 'etiqueta': 'Agora é com você', 'linhas': ['Responda o formulário com 3 perguntas', 'O link está junto com este vídeo']},
     {'id': '25', 'tipo': 'encerramento', 'titulo': 'Treinamento concluído', 'subtitulo': 'Gerenciamento do Time'},
 ]
