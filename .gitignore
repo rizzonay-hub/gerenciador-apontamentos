@@ -11,3 +11,12 @@ apontamentos.txt
 Thumbs.db
 desktop.ini
 ~$*
+
+# treinamento em vídeo: ferramentas, áudios e vídeos gerados ficam fora do repositório
+treinamento/ferramentas/
+treinamento/trabalho/
+treinamento/narracao-*/
+treinamento/amostras-voz/
+treinamento/*.mp4
+treinamento/links-v3.txt
+treinamento/trilha1-links.txt

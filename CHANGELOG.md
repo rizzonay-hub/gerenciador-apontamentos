@@ -1,5 +1,12 @@
 # Histórico — Apontamentos de horas
 
+## 29/10/2026 — treinamento em vídeo
+
+**Novo**
+- Pasta `treinamento\`: roteiro corporativo em linguagem simples (`roteiro-video.md`), perguntas de fixação em formulário (`formulario-perguntas.md`), montador `montar.py` (capturas reais + narração por IA + ffmpeg) e as capturas com login de funcionário (`capturas-funcionario\`). Os vídeos (`Trilha1-Apontamentos-de-horas.mp4`, `Trilha2-Gerenciamento-do-Time.mp4`), os áudios e o ffmpeg ficam fora do repositório.
+- `DemoMain.vb`: `/captura <pasta> funcionario` gera as telas sem os botões de gestor e a tela "acima de 8h".
+- `build-demo.rsp`: inclui `ModNiboUsuarios.vb` da entrega de Colaboradores, exigido pelo `UiMecano.vb` atual.
+
 ## 23/10/2026 — sem trava; aviso ao gestor
 
 **Mudou** (decisão dos usuários do GM)

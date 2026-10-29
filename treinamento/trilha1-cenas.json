@@ -1,0 +1,341 @@
+{
+ "trilha": "Trilha 1 — Apontamentos de horas · Para todos os colaboradores",
+ "voz": {
+  "nome": "Assistance",
+  "voiceId": 44,
+  "modelGroupId": 311,
+  "language": "Portuguese",
+  "voice_speed": "0.9"
+ },
+ "cenas": [
+  {
+   "id": "01",
+   "tipo": "cartao",
+   "cartao": "abertura",
+   "modulo": null,
+   "texto": "Bem-vindo ao treinamento Apontamentos de horas. Este treinamento é para todas as pessoas que marcam as horas de trabalho no Gerenciador. Ele dura cerca de seis minutos."
+  },
+  {
+   "id": "02",
+   "tipo": "cartao",
+   "cartao": "objetivos",
+   "modulo": null,
+   "texto": "Ao final, você vai saber: marcar as horas do seu dia; marcar as horas para várias empresas de uma vez; corrigir uma marcação e completar um dia que ficou faltando; e o que acontece quando o dia passa de oito horas."
+  },
+  {
+   "id": "03",
+   "tipo": "cartao",
+   "cartao": "importa",
+   "modulo": null,
+   "texto": "As horas que você marca mostram o trabalho de cada pessoa e quanto cada cliente custa para a empresa. Por isso, marque as suas horas todos os dias, antes de ir embora."
+  },
+  {
+   "id": "04",
+   "tipo": "modulo",
+   "modulo": 1,
+   "titulo": "A tela",
+   "texto": "Parte um. A tela."
+  },
+  {
+   "id": "05",
+   "tipo": "cartao",
+   "cartao": "menu",
+   "modulo": 1,
+   "texto": "No Gerenciador, abra o menu Time e clique em Apontamentos."
+  },
+  {
+   "id": "06",
+   "tipo": "tela",
+   "captura": "01-apontamentos.png",
+   "destaque": "tela",
+   "modulo": 1,
+   "texto": "Esta é a tela de Apontamentos de horas. Ela tem três partes. Em cima, a busca. No meio, os cartões com as suas horas. Embaixo, a lista de tudo o que você já marcou."
+  },
+  {
+   "id": "07",
+   "tipo": "tela",
+   "captura": "01-apontamentos.png",
+   "destaque": "cartoes-hoje-mes",
+   "modulo": 1,
+   "texto": "O cartão Hoje mostra as horas que você já marcou hoje. O cartão Este mês mostra as horas do mês e quanto ainda falta."
+  },
+  {
+   "id": "08",
+   "tipo": "tela",
+   "captura": "01-apontamentos.png",
+   "destaque": "cartao-menos-8h",
+   "modulo": 1,
+   "texto": "O cartão Menos de oito horas mostra os dias em que você marcou menos de oito horas. Olhe este cartão todos os dias."
+  },
+  {
+   "id": "09",
+   "tipo": "cartao",
+   "cartao": "pontos-chave",
+   "modulo": 1,
+   "linhas": [
+    "A tela tem três áreas: filtros, cartões e lista",
+    "O cartão Hoje acompanha o dia",
+    "O cartão Menos de 8 horas mostra o que ficou pendente"
+   ],
+   "texto": "O que lembrar. A tela tem três partes. O cartão Hoje mostra o seu dia. O cartão Menos de oito horas mostra o que faltou."
+  },
+  {
+   "id": "10",
+   "tipo": "modulo",
+   "modulo": 2,
+   "titulo": "Marcar as horas",
+   "texto": "Parte dois. Marcar as horas."
+  },
+  {
+   "id": "11",
+   "tipo": "tela",
+   "captura": "01-apontamentos.png",
+   "destaque": "botao-novo",
+   "modulo": 2,
+   "texto": "Para marcar as horas, aperte o botão vermelho Novo apontamento, no canto de cima, à direita."
+  },
+  {
+   "id": "12",
+   "tipo": "tela",
+   "captura": "02-novo-apontamento.png",
+   "destaque": "bloco-o-que",
+   "modulo": 2,
+   "texto": "Abre uma janela. Na parte de cima, diga o que você fez. Marque Cliente, se o trabalho foi para uma empresa. Marque Atividade interna, se foi reunião, treinamento, atestado ou outro trabalho da própria Mêcano."
+  },
+  {
+   "id": "13",
+   "tipo": "tela",
+   "captura": "02b-busca-cliente.png",
+   "destaque": "busca",
+   "modulo": 2,
+   "texto": "Escreva o nome ou o código da empresa. A lista mostra as empresas. Clique na empresa certa."
+  },
+  {
+   "id": "14",
+   "tipo": "tela",
+   "captura": "02-novo-apontamento.png",
+   "destaque": "bloco-quando",
+   "modulo": 2,
+   "texto": "Na parte de baixo, diga quando e quanto tempo. A data já vem com o dia de hoje. Escreva as horas e os minutos."
+  },
+  {
+   "id": "15",
+   "tipo": "tela",
+   "captura": "02-novo-apontamento.png",
+   "destaque": "atalhos",
+   "modulo": 2,
+   "texto": "Os botões de atalho ajudam: quinze minutos, trinta minutos, uma hora, duas horas, quatro horas ou oito horas. É só apertar."
+  },
+  {
+   "id": "16",
+   "tipo": "tela",
+   "captura": "02-novo-apontamento.png",
+   "destaque": "botoes-salvar",
+   "modulo": 2,
+   "texto": "Para terminar, aperte o botão vermelho Salvar. Se vai marcar mais uma, aperte Salvar e novo. A janela guarda a primeira e abre vazia para a próxima."
+  },
+  {
+   "id": "17",
+   "tipo": "cartao",
+   "cartao": "pontos-chave",
+   "modulo": 2,
+   "linhas": [
+    "Novo apontamento abre o registro",
+    "Primeiro o que foi feito; depois quando e quanto tempo",
+    "Salvar e novo agiliza vários registros"
+   ],
+   "texto": "O que lembrar. Novo apontamento abre a janela. Em cima, o que você fez. Embaixo, quando e quanto tempo. Salvar guarda."
+  },
+  {
+   "id": "18",
+   "tipo": "modulo",
+   "modulo": 3,
+   "titulo": "Várias empresas e grupos",
+   "texto": "Parte três. Várias empresas e grupos."
+  },
+  {
+   "id": "19",
+   "tipo": "tela",
+   "captura": "03-varias-empresas.png",
+   "destaque": "caixa-varias",
+   "modulo": 3,
+   "texto": "Fez o mesmo trabalho para várias empresas? Marque a caixinha Lançar para várias empresas."
+  },
+  {
+   "id": "20",
+   "tipo": "tela",
+   "captura": "03-varias-empresas.png",
+   "destaque": "listas",
+   "modulo": 3,
+   "texto": "Aparecem duas listas. Na lista da esquerda, marque as empresas. Depois aperte a seta para passar as empresas para a lista da direita. Se a lista for grande, escreva o nome da empresa na busca."
+  },
+  {
+   "id": "21",
+   "tipo": "tela",
+   "captura": "03b-dividir-tempo.png",
+   "destaque": "como-gravar",
+   "modulo": 3,
+   "texto": "Agora escolha como guardar o tempo. Primeira opção: cada empresa fica com o tempo inteiro. Uma hora em quatro empresas vira quatro horas no dia. Segunda opção: dividir o tempo entre as empresas. Uma hora em quatro empresas vira quinze minutos para cada uma, e uma hora no dia. Escolha a opção que mostra o tempo que você gastou de verdade."
+  },
+  {
+   "id": "22",
+   "tipo": "tela",
+   "captura": "03c-meus-grupos.png",
+   "destaque": "tela",
+   "modulo": 3,
+   "texto": "Você sempre trabalha para as mesmas empresas? Aperte Meus grupos. Dê um nome ao grupo e marque as empresas. Pode criar quantos grupos quiser."
+  },
+  {
+   "id": "23",
+   "tipo": "tela",
+   "captura": "03-varias-empresas.png",
+   "destaque": "campo-grupo",
+   "modulo": 3,
+   "texto": "Na hora de marcar as horas, escolha o grupo. As empresas entram todas de uma vez."
+  },
+  {
+   "id": "24",
+   "tipo": "cartao",
+   "cartao": "pontos-chave",
+   "modulo": 3,
+   "linhas": [
+    "Várias empresas evita repetir o mesmo registro",
+    "Tempo inteiro ou dividido: o que corresponde ao trabalho real",
+    "Grupos guardam as empresas que você atende com frequência"
+   ],
+   "texto": "O que lembrar. Várias empresas marca o mesmo trabalho de uma vez. Tempo inteiro ou dividido: escolha o que você gastou de verdade. Grupos guardam as empresas de sempre."
+  },
+  {
+   "id": "25",
+   "tipo": "modulo",
+   "modulo": 4,
+   "titulo": "Corrigir e completar",
+   "texto": "Parte quatro. Corrigir e completar."
+  },
+  {
+   "id": "26",
+   "tipo": "tela",
+   "captura": "04-editar-apontamento.png",
+   "destaque": "tela",
+   "modulo": 4,
+   "texto": "Marcou errado? Na lista, clique duas vezes seguidas na linha errada. A janela abre com o que você marcou. Arrume e aperte Salvar."
+  },
+  {
+   "id": "27",
+   "tipo": "tela",
+   "captura": "01-apontamentos.png",
+   "destaque": "botao-excluir",
+   "modulo": 4,
+   "texto": "Quer apagar uma marcação? Clique na linha e aperte Excluir. O sistema pergunta se você tem certeza."
+  },
+  {
+   "id": "28",
+   "tipo": "tela",
+   "captura": "05-lancar-dia-pendente.png",
+   "destaque": "tela",
+   "modulo": 4,
+   "texto": "Ficou um dia faltando? No cartão Menos de oito horas, clique no dia. A janela abre já com aquela data."
+  },
+  {
+   "id": "29",
+   "tipo": "tela",
+   "captura": "01-apontamentos.png",
+   "destaque": "botao-exportar",
+   "modulo": 4,
+   "texto": "Quer ver as suas horas numa planilha? Aperte Exportar."
+  },
+  {
+   "id": "30",
+   "tipo": "cartao",
+   "cartao": "pontos-chave",
+   "modulo": 4,
+   "linhas": [
+    "Dois cliques corrigem",
+    "Excluir apaga, com confirmação",
+    "O cartão Menos de 8 horas leva ao dia pendente"
+   ],
+   "texto": "O que lembrar. Dois cliques na linha corrige. Excluir apaga. Clicar no dia do cartão completa o que faltou."
+  },
+  {
+   "id": "31",
+   "tipo": "modulo",
+   "modulo": 5,
+   "titulo": "Mais de 8 horas no dia",
+   "texto": "Parte cinco. Mais de oito horas no dia."
+  },
+  {
+   "id": "32",
+   "tipo": "cartao",
+   "cartao": "regra",
+   "modulo": 5,
+   "linhas": [
+    "Jornada: 8 horas por dia",
+    "Acima de 8 horas: o sistema grava e avisa",
+    "O aviso vai para você e para o seu gestor"
+   ],
+   "texto": "O dia normal tem oito horas. Se o seu dia passar de oito horas, o sistema guarda a marcação do mesmo jeito. Nada é recusado. Mas ele avisa você na tela, e avisa o seu gestor."
+  },
+  {
+   "id": "33",
+   "tipo": "tela",
+   "captura": "02c-acima-de-8h.png",
+   "destaque": "subtitulo",
+   "modulo": 5,
+   "texto": "Na janela, o aviso aparece em vermelho, logo abaixo do título, antes de você apertar Salvar."
+  },
+  {
+   "id": "34",
+   "tipo": "cartao",
+   "cartao": "pontos-chave",
+   "modulo": 5,
+   "linhas": [
+    "Nada é bloqueado",
+    "Acima de 8 horas, você e o seu gestor são avisados",
+    "Registre o tempo real"
+   ],
+   "texto": "O que lembrar. Nada é bloqueado. Acima de oito horas, você e o seu gestor são avisados. Marque sempre o tempo de verdade."
+  },
+  {
+   "id": "35",
+   "tipo": "cartao",
+   "cartao": "resumo",
+   "linhas": [
+    "Marque as horas todos os dias",
+    "Novo apontamento: cliente ou atividade interna",
+    "Várias empresas e Grupos: o mesmo trabalho de uma vez",
+    "Dois cliques corrige; o cartão completa",
+    "Mais de 8 horas: guarda e avisa"
+   ],
+   "texto": "Resumo. Marque as horas todos os dias. Novo apontamento para um cliente ou uma atividade interna. Várias empresas e Grupos para o mesmo trabalho de uma vez. Dois cliques corrige, e o cartão completa o dia que faltou. Mais de oito horas: o sistema guarda e avisa."
+  },
+  {
+   "id": "36",
+   "tipo": "cartao",
+   "cartao": "duvidas",
+   "linhas": [
+    "Como usar: pergunte ao seu gestor",
+    "O sistema deu erro: fale com a Nayara"
+   ],
+   "texto": "Ficou com dúvida de como usar? Pergunte ao seu gestor. O sistema deu erro? Fale com a Nayara."
+  },
+  {
+   "id": "37",
+   "tipo": "cartao",
+   "cartao": "formulario",
+   "linhas": [
+    "Responda o formulário com 5 perguntas",
+    "Leva 2 minutos",
+    "O link está junto com este vídeo"
+   ],
+   "texto": "Agora é com você. Responda o formulário com cinco perguntas. Leva dois minutos. O link está junto com este vídeo."
+  },
+  {
+   "id": "38",
+   "tipo": "cartao",
+   "cartao": "encerramento",
+   "texto": "Você terminou o treinamento Apontamentos de horas. Obrigado."
+  }
+ ],
+ "versao": 3,
+ "quiz": "formulario-perguntas.md (sem narração)"
+}

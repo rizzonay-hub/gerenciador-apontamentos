@@ -13,7 +13,8 @@ Imports System.Windows.Forms
 ' Gerenciador (frmApontamentos.Abrir() no item Apontamentos > Time).
 '
 ' Sem argumentos abre a tela de apontamentos. Argumentos:
-'   /captura <pasta>    gera PNGs das telas sem interação, para conferir layout
+'   /captura <pasta>              gera PNGs das telas sem interação, para conferir layout
+'   /captura <pasta> funcionario  o mesmo, logado como analista (sem os botões de gestor), para o treinamento
 
 ''' <summary>Globais da sessão que o Gerenciador fornece (App_Code\Main.vb). Na demo você é uma analista do Fiscal.</summary>
 Public Module GlobaisDemo
@@ -40,7 +41,12 @@ Public Module DemoMain
         Dim opcao = If(args IsNot Nothing AndAlso args.Length >= 1, args(0).ToLowerInvariant(), "")
         Select Case opcao
             Case "/captura"
-                If args.Length >= 2 Then Capturar(args(1))
+                Dim funcionario = args.Length >= 3 AndAlso args(2).ToLowerInvariant() = "funcionario"
+                If funcionario Then
+                    UserName = "BEATRIZ EXEMPLO"
+                    UserFuncao = "ANALISTA FISCAL"
+                End If
+                If args.Length >= 2 Then Capturar(args(1), funcionario)
             Case Else
                 Application.Run(New frmApontamentos())
         End Select
@@ -74,7 +80,7 @@ Public Module DemoMain
         f.TopMost = False
     End Sub
 
-    Private Sub Capturar(pasta As String)
+    Private Sub Capturar(pasta As String, Optional funcionario As Boolean = False)
         Directory.CreateDirectory(pasta)
 
         Dim lista As New frmApontamentos()
@@ -106,7 +112,7 @@ Public Module DemoMain
         SalvarCaptura(novo, Path.Combine(pasta, "03b-dividir-tempo.png"))
         novo.Close()
 
-        Dim primeiro = ModApontamento.Listar(Date.Today.AddDays(-10), Date.Today)
+        Dim primeiro = ModApontamento.Listar(Date.Today.AddDays(-30), Date.Today)
         If primeiro.Count > 0 Then
             Dim editar As New frmApontamentoDet(primeiro(primeiro.Count - 1).Id, Nothing, resumo)
             editar.StartPosition = FormStartPosition.Manual
@@ -128,6 +134,28 @@ Public Module DemoMain
             dia.Close()
         End If
 
+        ' acima de 8h: um dia com 6h00 a 8h00 já marcadas, mais 2h digitadas -> subtítulo vermelho
+        Dim porDia = ModApontamento.Listar(Date.Today.AddDays(-20), Date.Today).
+            GroupBy(Function(a) a.Data.Date).Select(Function(g) New With {.Dia = g.Key, .Horas = g.Sum(Function(a) a.Horas)}).
+            Where(Function(x) x.Horas >= 6D AndAlso x.Horas <= 8D).OrderByDescending(Function(x) x.Dia).ToList()
+        If porDia.Count > 0 Then
+            Dim acima As New frmApontamentoDet(0, porDia(0).Dia, resumo)
+            acima.StartPosition = FormStartPosition.Manual
+            acima.Location = New Point(0, 0)
+            acima.Show()
+            Processar(8)
+            acima.DigitarCliente("aurora tecnologia")
+            Processar(4)
+            Dim campo = acima.GetType().GetField("numHoras", Reflection.BindingFlags.NonPublic Or Reflection.BindingFlags.Instance)
+            If campo IsNot Nothing Then
+                Dim num = TryCast(campo.GetValue(acima), NumericUpDown)
+                If num IsNot Nothing Then num.Value = 2
+            End If
+            Processar(6)
+            SalvarCaptura(acima, Path.Combine(pasta, "02c-acima-de-8h.png"))
+            acima.Close()
+        End If
+
         Dim grupos As New frmGruposEmpresas()
         grupos.StartPosition = FormStartPosition.Manual
         grupos.Location = New Point(0, 0)
@@ -135,6 +163,11 @@ Public Module DemoMain
         Processar(8)
         SalvarCaptura(grupos, Path.Combine(pasta, "03c-meus-grupos.png"))
         grupos.Close()
+
+        If funcionario Then
+            lista.Close()
+            Return
+        End If
 
         Dim banco As New frmBancoHoras(ModApontamento.CalcularBanco())
         banco.StartPosition = FormStartPosition.Manual

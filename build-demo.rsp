@@ -10,8 +10,10 @@
 /r:System.Drawing.dll
 /r:System.Windows.Forms.dll
 /r:System.Xml.dll
+/r:System.Web.Extensions.dll
 "..\TO-DO_Entrega-Cadastro-Colaboradores\TemaMecano.vb"
 "..\TO-DO_Entrega-Cadastro-Colaboradores\Colaborador.vb"
+"..\TO-DO_Entrega-Cadastro-Colaboradores\ModNiboUsuarios.vb"
 "..\TO-DO_Entrega-Cadastro-Colaboradores\UiMecano.vb"
 preprod\Apontamento.vb
 ModApontamentoDemo.vb
